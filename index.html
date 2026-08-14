@@ -1,0 +1,330 @@
+Exit code: 0
+Wall time: 0.5 seconds
+Total output lines: 332
+Output:
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10151c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>TS 誘導計算</title>
+  <style>
+    :root { color-scheme: dark; --bg:#10151c; --panel:#1b2430; --line:#354454; --text:#f4f7fb; --sub:#9eafc1; --blue:#31a7ff; --ok:#31d49b; --warn:#ffca58; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--bg); color:var(--text); font:16px/1.45 system-ui, "Yu Gothic UI", sans-serif; }
+    main { max-width:760px; margin:auto; padding:16px 16px 42px; }
+    h1 { font-size:22px; margin:3px 0 4px; } .lead { color:var(--sub); margin:0 0 18px; font-size:14px; }
+    .eyebrow { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin:0 0 2px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0; }
+    h2 { font-size:17px; margin:0 0 12px; } label { display:block; margin:10px 0 5px; color:var(--sub); font-size:13px; }
+    select,input,button { width:100%; min-height:45px; border-radius:9px; border:1px solid var(--line); padding:9px 11px; background:#111922; color:var(--text); font:inherit; } input[type="checkbox"] { width:auto; min-height:0; padding:0; vertical-align:middle; accent-color:var(--blue); }
+    button { cursor:pointer; background:#1269ae; border-color:#268ed8; font-weight:700; touch-action:manipulation; } button.alt { background:#263545; border-color:#3b5064; } button.danger { background:#62353a; border-color:#a14e58; }
+    button:focus-visible,select:focus-visible,input:focus-visible { outline:3px solid #83c9ff; outline-offset:2px; }
+    .grid { display:grid; gap:10px; grid-template-columns:1fr 1fr; } .grid3 { display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    .status { font-size:13px; color:var(--sub); margin:10px 0 0; min-height:20px; } .status.ok { color:var(--ok); } .status.warn { color:var(--warn); }
+    .result { border:2px solid var(--blue); background:#0d1c29; text-align:center; padding:18px 10px; border-radius:14px; scroll-margin-top:12px; }
+    .point { font-size:19px; font-weight:800; overflow-wrap:anywhere; } .measure { margin-top:14px; } .measure span { display:block; color:var(--sub); font-size:13px; }
+    .measure strong { font-size:40px; letter-spacing:.5px; line-height:1.2; } .distance strong { color:#88d4ff; }
+    .hint { font-size:13px; color:var(--sub); margin:12px 0 0; } .hidden { display:none; }
+    .plan { display:block; width:100%; aspect-ratio:1.35; min-height:250px; margin-top:10px; border:1px solid var(--line); border-radius:10px; background:#111922; touch-action:none; cursor:grab; } .plan.dragging { cursor:grabbing; } .plancontrols { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; } .plancontrols button { min-height:42px; } .plancontrols .wide { grid-column:1 / -1; } .planlegend { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--sub); font-size:12px; } .planlegend span { display:flex; align-items:center; gap:4px; } .legendmark { width:10px; height:10px; display:inline-block; border-radius:50%; } .legendmark.station { background:#31a7ff; } .legendmark.back { background:#31d49b; } .legendmark.target { background:#ffca58; } .legendmark.left { background:#d48cff; } .legendmark.right { background:#ff8a58; } .planframe:fullscreen, .planframe:-webkit-full-screen { display:grid; grid-template-rows:minmax(0,1fr) auto auto auto; gap:8px; box-sizing:border-box; width:100vw; height:100vh; padding:12px; background:var(--bg); } .planframe:fullscreen .plan, .planframe:-webkit-full-screen .plan { width:100%; height:100%; min-height:0; margin:0; aspect-ratio:auto; border-radius:8px; }
+    .runbar { display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:8px; margin-top:14px; } .runbar button { min-height:52px; }
+    .quality { display:inline-block; border-radius:999px; padding:3px 9px; font-size:12px; font-weight:800; background:#203344; color:#bfe4ff; }
+    details summary { cursor:pointer; color:var(--sub); } table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; } th,td { padding:6px; border-bottom:1px solid var(--line); text-align:left; }
+    @media (max-width:430px) { main { padding:12px 12px 34px; } .measure strong { font-size:34px; } .grid3 { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">FIELD STAKEOUT</p>
+  <h1>TS 誘導計算</h1>
+  <p class="lead">座標は端末内で処理・保存されます。後方交会で据付点を計算し、後視を0°にして目標点を誘導します。</p>
+
+  <section class="card">
+    <h2>1. 座標を読み込む</h2>
+    <input id="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    <p id="fileStatus" class="status">CSV または Excel（.xlsx）：点名, X, Y, H（Hは省略可）。先頭シートを読み込みます。</p>
+    <details><summary>点を手入力する</summary>
+      <div class="grid3"><label>点名<input id="manualName" placeholder="例：NO.1"></label><label>X（北）<input id="manualX" inputmode="decimal"></label><label>Y（東）<input id="manualY" inputmode="decimal"></label></div>
+      <button id="addPoint" class="alt" type="button">点を追加</button>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>2. 後方交会で据付点を自動計算</h2>
+    <div class="grid">
+      <button id="mode2" class="alt" type="button">2点後方交会</button>
+      <button id="mode3" class="alt" type="button">3点後方交会</button>
+    </div>
+    <div id="resection2">
+      <p class="hint">既知2点までの水平距離と、既知点1を0°にしたときの既知点2のTS読み角を入力します。読み角で据付位置を自動判定します。</p>
+      <div class="grid"><div><label>既知点 1</label><select id="r2p1"></select><label>水平距離 1（m）</label><input id="r2d1" inputmode="decimal"></div><div><label>既知点 2</label><select id="r2p2"></select><label>水平距離 2（m）</label><input id="r2d2" inputmode="decimal"></div></div>
+      <label for="r2angle">既知点1 → 既知点2のTS読み角</label><input id="r2angle" inputmode="text" placeholder="例：123.456 または 123°27′22″">
+      <button id="calcR2" type="button">2点後方交会を計算</button>
+    </div>
+    <div id="resection3" class="hidden">
+      <p class="hint">既知3点までの水平距離を入力すると、据付点を自動計算します。3点はできるだけ三角形状に配置してください。</p>
+      <div class="grid3"><div><label>既知点 1</label><select id="r3p1"></select><label>距離 1（m）</label><input id="r3d1" inputmode="decimal"></div><div><label>既知点 2</label><select id="r3p2"></select><label>距離 2（m）</label><input id="r3d2" inputmode="decimal"></div><div><label>既知点 3</label><select id="r3p3"></select><label>距離 3（m）</label><input id="r3d3" inputmode="decimal"></div></div>
+      <button id="calcR3" type="button">3点後方交会を計算</button>
+    </div>
+    <div id="resectionResult" class="status">座標を読み込んでから既知点と水平距離を入力してください。</div>
+  </section>
+
+  <section class="card">
+    <h2>3. 方位をセット</h2>
+    <div class="grid">
+      <div><label for="station">機械設置点</label><select id="station"><option value="">座標を読み込んでください</option></select></div>
+      <div><label for="backsight">バック点</label><select id="backsight"><option value="">座標を読み込んでください</option></select></div>
+    </div>
+    <button id="setZero" type="button">バック点を視準して、TSの水平角を 0° に設定した</button>
+    <p id="setupStatus" class="status">後方交会の計算後、機械点とバック点が自動セットされます。</p>
+  </section>
+
+  <section id="targetCard" class="card">
+    <h2>4. 目標点を選ぶ</h2>
+    <label for="filter">点名で絞り込み</label><input id="filter" placeholder="例：NO.12">
+    <label for="target">目標点</label><select id="target"><option value="">目標点を選択</option></select>
+  </section>
+
+  <section class="card">
+    <h2>5. 左右離れ杭を指示</h2>
+    <p class="hint">「基準線点 → 目標点」の進行方向に対して、左・右へ直角に離れた杭を計算します。基準線点には目標点の手前側の点を選択してください。</p>
+    <label for="offsetBase">基準線点（目標点の手前側）</label><select id="offsetBase"><option value="">基準線点を選択</option></select>
+    <div class="grid"><div><label for="offsetLeft">左離れ（m）</label><input id="offsetLeft" inputmode="decimal" placeholder="例：1.000"></div><div><label for="offsetRight">右離れ（m）</label><input id="offsetRight" inputmode="decimal" placeholder="例：1.000"></div></div>
+    <button id="calcOffsets" type="button">左右離れ杭を計算</button>
+    <div id="offsetStatus" class="status">目標点・基準線点・離れを入力してください。</div>
+    <div id="offsetChoices" class="actions hidden"></div>
+  </section>
+
+  <section class="card">
+    <h2>6. 伏図</h2>
+    <label><input id="planLabels" type="checkbox" checked> 点名を表示</label>
+    <div id="planFrame" class="planframe">
+      <canvas id="plan" class="plan" role="img" aria-label="座標を読み込むと伏図を表示します">伏図を表示できないブラウザです。</canvas>
+      <div class="plancontrols"><button id="planZoomOut" class="alt" type="button">− 縮小</button><button id="planZoomIn" type="button">＋ 拡大</button><button id="planRotateLeft" class="alt" type="button">↺ 左へ 15°</button><button id="planRotateRight" class="alt" type="button">↻ 右へ 15°</button><button id="planReset" class="alt wide" type="button">表示を戻す</button><button id="planFullscreen" class="alt wide" type="button">全画面表示</button></div>
+      <p id="planStatus" class="hint">北が上、東が右です。指でドラッグして移動できます。</p>
+      <div class="planlegend"><span><i class="legendmark station"></i>機械点</span><span><i class="legendmark back"></i>バック点</span><span><i class="legendmark target"></i>目標点</span><span><i class="legendmark left"></i>左離れ</span><span><i class="legendmark right"></i>右離れ</span></div>
+    </div>
+  </section>
+
+  <section id="resultCard" class="result hidden" aria-live="polite">
+    <div class="point" id="resultName">—</div>
+    <div class="measure"><span>TSで回す右角</span><strong id="angle">—</strong></div>
+    <div class="measure distance"><span>水平距離</span><strong id="distance">—</strong></div>
+    <p id="coordDiff" class="hint"></p>
+    <div id="runbar" class="runbar hidden"><button id="previousTarget" class="alt" type="button">← 前点</button><button id="clearTarget" class="alt" type="button">目標点を解除</button><button id="nextTarget" class="alt" type="button">次点 →</button></div>
+  </section>
+
+  <section class="card">
+    <div class="actions"><button id="clearData" class="danger" type="button">座標を消去</button><button id="exportCsv" class="alt" type="button">座標をCSV保存</button></div>
+    <p class="hint">計算は X＝北、Y＝東として方位を時計回りに扱います。観測値ではなく、座標から求める設計値です。利用前に機械高・プリズム高・座標系などの現場条件を確認してください。</p>
+    <table id="pointTable" class="hidden"><thead><tr><th>点名</th><th>X</th><th>Y</th></tr></thead><tbody></tbody></table>
+  </section>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let points = [];
+  let zeroReady = false;
+  let resectionStation = null;
+  let offsetTargets = {};
+  let planScale = 1;
+  let planRotation = 0;
+  let planPanX = 0;
+  let planPanY = 0;
+  let planDrag = null;
+  const normalize = d => ((d % 360) + 360) % 360;
+  const bearing = (a,b) => normalize(Math.atan2(b.y-a.y, b.x-a.x) * 180 / Math.PI);
+  const dms = deg => { let s=Math.round(normalize(deg)*3600), d=Math.floor(s/3600); s-=d*3600; const m=Math.floor(s/60); s-=m*60; return `${d}°${String(m).padStart(2,'0')}′${String(s).padStart(2,'0')}″`; };
+  const num = s => { const v=String(s ?? '').replace(/,/g,'').trim(); return v==='' ? NaN : Number(v); };
+  const angleNum = s => { const v=String(s ?? '').normalize('NFKC').trim(); if(!v) return NaN; if(/^[+-]?\d+(?:\.\d+)?$/.test(v)) return normalize(Number(v)); const m=v.match(/^([+-]?\d+(?:\.\d+)?)\s*[°度]\s*(?:(\d+(?:\.\d+)?)\s*[′'])?\s*(?:(\d+(?:\.\d+)?)\s*[″"])?$/); return m ? normalize(Number(m[1])+(Number(m[2]||0)/60)+(Number(m[3]||0)/3600)) : NaN; };
+  const angleDiff = (a,b) => Math.abs(normalize(a-b+180)-180);
+  const findPoint = name => name==='__resection__' ? resectionStation : points.find(p => p.name === name);
+
+  function save() { localStorage.setItem('ts-guide-points-v1', JSON.stringify(points)); }
+  function message(id, text, kind='') { const el=$(id); el.textContent=text; el.className='status '+kind; }
+  function options(select, includeBlank=true) {
+    const current=select.value; select.innerHTML=includeBlank?'<option value="">選択してください</option>':'';
+    if (resectionStation && (select.id==='station')) { const o=document.createElement('option'); o.value='__resection__'; o.textContent=`後方交会機械点  (X ${resectionStation.x.toFixed(3)}, Y ${resectionStation.y.toFixed(3)})`; select.append(o); }
+    points.forEach(p => { const o=document.createElement('option'); o.value=p.name; o.textContent=`${p.name}  (X ${p.x}, Y ${p.y})`; select.append(o); });
+    if (current==='__resection__' && resectionStation || points.some(p=>p.name===current)) select.value=current;
+  }
+  function populate() { options($('station')); options($('backsight')); ['r2p1','r2p2','r3p1','r3p2','r3p3','offsetBase'].forEach(id=>options($(id))); populateTargets(); renderTable(); drawPlan(); }
+  function populateTargets() {
+    const q=$('filter').value.trim().toLowerCase(), current=$('target').value;
+    $('target').innerHTML='<option value="">目標点を選択</option>';
+    points.filter(p=>p.name.toLowerCase().includes(q)).forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; $('target').append(o); });
+    if ([...$('target').options].some(o=>o.value===current)) $('target').value=current;
+  }
+  function renderTable() {
+    const table=$('pointTable'), body=table.querySelector('tbody'); body.innerHTML='';
+    points.slice(0,20).forEach(p=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(p.name)}</td><td>${p.x}</td><td>${p.y}</td>`; body.append(tr); });
+    table.classList.toggle('hidden', !points.length);
+  }
+  function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function drawPlan() {
+    const canvas=$('plan'), ctx=canvas.getContext('2d'), rect=canvas.getBoundingClientRect(), width=Math.max(280,Math.round(rect.width||360)), height=Math.max(250,Math.round(rect.height||270)), dpr=window.devicePixelRatio||1;
+    canvas.width=width*dpr; canvas.height=height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,width,height);
+    const css=getComputedStyle(document.documentElement), color=name=>css.getPropertyValue(name).trim()||'#9eafc1', station=findPoint($('station').value), back=findPoint($('backsight').value), target=findPoint($('target').value), base=findPoint($('offsetBase').value), left=offsetTargets.left?.point, right=offsetTargets.right?.point, all=[...points,...[resectionStation,left,right].filter(Boolean)];
+    const rotation=((planRotation%360)+360)%360, radians=rotation*Math.PI/180, zoom=Math.round(planScale*100);
+    if(!all.length) { ctx.fillStyle=color('--sub'); ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('座標を読み込むと伏図を表示します',width/2,height/2); $('planStatus').textContent=`北が上、東が右です。倍率 ${zoom}%・回転 ${rotation}°`; return; }
+    const xs=all.map(p=>p.x), ys=all.map(p=>p.y), spanX=Math.max(1,Math.max(...xs)-Math.min(...xs)), spanY=Math.max(1,Math.max(...ys)-Math.min(...ys)), centerX=(Math.max(...xs)+Math.min(...xs))/2, centerY=(Math.max(...ys)+Math.min(...ys))/2, pad=32, cos=Math.cos(radians), sin=Math.sin(radians), rotatedWidth=Math.abs(cos)*spanY+Math.abs(sin)*spanX, rotatedHeight=Math.abs(sin)*spanY+Math.abs(cos)*spanX, scale=Math.min((width-pad*2)/rotatedWidth,(height-pad*2)/rotatedHeight)*planScale, pos=p=>{const u=(p.y-centerY)*scale,v=-(p.x-centerX)*scale;return{x:width/2+planPanX+u*cos-v*sin,y:height/2+planPanY+u*sin+v*cos};};
+    ctx.fillStyle='#111922'; ctx.fillRect(0,0,width,height); ctx.save(); ctx.translate(width/2+planPanX,height/2+planPanY); ctx.rotate(radians); ctx.strokeStyle=color('--line'); ctx.lineWidth=1; const grid=Math.hypot(width,height); for(let i=-2;i<=2;i++){const v=i*grid/4;ctx.beginPath();ctx.moveTo(v,-grid);ctx.lineTo(v,grid);ctx.moveTo(-grid,v);ctx.lineTo(grid,v);ctx.stroke();} ctx.restore();
+    const line=(a,b,stroke,dash=[])=>{if(!a||!b)return;const A=pos(a),B=pos(b);ctx.save();ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.restore();}; line(base,target,color('--warn')); line(station,back,color('--ok'),[5,4]);
+    const labels=$('planLabels').checked, mark=(p,fill,shape,label='')=>{if(!p)return;const q=pos(p);ctx.save();ctx.fillStyle=fill;ctx.strokeStyle='#10151c';ctx.lineWidth=1.5;ctx.beginPath();if(shape==='square')ctx.rect(q.x-5,q.y-5,10,10);else if(shape==='diamond'){ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+6,q.y);ctx.lineTo(q.x,q.y+6);ctx.lineTo(q.x-6,q.y);ctx.closePath();}else if(shape==='triangle'){ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+6,q.y+5);ctx.lineTo(q.x-6,q.y+5);ctx.closePath();}else ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.stroke();if(label){ctx.fillStyle=color('--text');ctx.strokeStyle='#10151c';ctx.lineWidth=3;ctx.font='12px system-ui';ctx.textAlign='left';ctx.strokeText(label,q.x+7,q.y-7);ctx.fillText(label,q.x+7,q.y-7);}ctx.restore();};
+    points.forEach(p=>mark(p,color('--sub'),'dot',labels?p.name:'')); mark(station,color('--blue'),'diamond','機械'); mark(back,color('--ok'),'triangle','後視'); mark(target,color('--warn'),'diamond','目標'); mark(left,'#d48cff','square','左'); mark(right,'#ff8a58','square','右');
+    const axis=(label,u,v,stroke)=>{const ox=24,oy=height-24,x=ox+u*cos-v*sin,y=oy+u*sin+v*cos;ctx.save();ctx.strokeStyle=stroke;ctx.fillStyle=stroke;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(x,y);ctx.stroke();ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(label,x,y-4);ctx.restore();}; axis('N',0,-20,color('--text')); axis('E',20,0,color('--sub'));
+    canvas.setAttribute('aria-label',`${points.length}点の伏図。倍率 ${zoom}%、右回転 ${rotation}度です。`); $('planStatus').textContent=`指でドラッグして移動できます。倍率 ${zoom}%・右回転 ${rotation}°｜登録点 ${points.length} 点${resectionStation?'・後方交会機械点':''}${left||right?'・左右離れ杭':''}を表示中。`;
+  }
+  function resetSetup() { zeroReady=false; $('resultCard').classList.add('hidden'); message('setupStatus','機械点とバック点を選択してください。'); }
+  function currentTargets() { return [...$('target').options].filter(o=>o.value); }
+  function moveTarget(direction) {
+    const list=currentTargets(), index=list…107 tokens truncated…g.y===st.y)) { $('resultCard').classList.add('hidden'); return false; }
+    const dx=tg.x-st.x, dy=tg.y-st.y, dist=Math.hypot(dx,dy), right=normalize(bearing(st,tg)-bearing(st,bs));
+    $('resultName').textContent=label; $('angle').textContent=dms(right); $('distance').textContent=`${dist.toFixed(3)} m`;
+    $('coordDiff').textContent=`ΔX ${dx.toFixed(3)} m　ΔY ${dy.toFixed(3)} m　方位角 ${dms(bearing(st,tg))}`;
+    $('resultCard').classList.remove('hidden');
+    $('runbar').classList.toggle('hidden', currentTargets().length<2);
+    $('resultCard').scrollIntoView({block:'nearest',behavior:'smooth'});
+    if(navigator.vibrate) navigator.vibrate(18);
+    drawPlan();
+    return true;
+  }
+  function calculate() { const tg=findPoint($('target').value); if(!tg) { $('resultCard').classList.add('hidden'); return; } calculateTo(tg); }
+  function setPoints(newPoints, source) {
+    const seen=new Set(); points=newPoints.filter(p=>p.name && Number.isFinite(p.x) && Number.isFinite(p.y) && !seen.has(p.name) && seen.add(p.name));
+    if (!points.length) throw new Error('点名・X・Yのデータ行が見つかりません。');
+    resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0; save(); populate(); resetSetup(); message('fileStatus',`${points.length} 点を読み込みました（${source}）。`, 'ok');
+  }
+  function parseCsv(text) {
+    const rows=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(r=>r.trim()).map(r=>r.split(/[\t,]/).map(v=>v.trim().replace(/^"|"$/g,'')));
+    if (!rows.length) return [];
+    const normal = v => String(v).toLowerCase().replace(/[\s　_()（）\[\]【】]/g,'');
+    const isX = v => /^(x|北|north)$|^(x|北|north).*(座標|coord)|^(座標|coord).*(x|北|north)$/.test(normal(v));
+    const isY = v => /^(y|東|east)$|^(y|東|east).*(座標|coord)|^(座標|coord).*(y|東|east)$/.test(normal(v));
+    const isName = v => /^(点名|点番号|名称|name|point|no\.?|no)$/i.test(normal(v));
+    let headerRow=-1, nameIndex=0, xIndex=1, yIndex=2;
+    for(let i=0;i<Math.min(rows.length,30);i++) { const header=rows[i]; const xi=header.findIndex(isX), yi=header.findIndex(isY); if(xi>=0 && yi>=0) { headerRow=i; xIndex=xi; yIndex=yi; const ni=header.findIndex(isName); nameIndex=ni>=0?ni:0; break; } }
+    if(headerRow<0) {
+      const maxCols=Math.max(...rows.map(r=>r.length)); let best=null;
+      for(let candidateX=1;candidateX<maxCols-1;candidateX++) {
+        let matches=0;
+        for(const r of rows.slice(0,30)) if(r[candidateX-1] && !Number.isFinite(num(r[candidateX-1])) && Number.isFinite(num(r[candidateX])) && Number.isFinite(num(r[candidateX+1]))) matches++;
+        if(!best || matches>best.matches) best={matches,candidateX};
+      }
+      if(best?.matches) { nameIndex=best.candidateX-1; xIndex=best.candidateX; yIndex=best.candidateX+1; }
+    }
+    const start=headerRow>=0?headerRow+1:0, ni=nameIndex, xi=xIndex, yi=yIndex;
+    return rows.slice(start).map(r=>({name:r[ni],x:num(r[xi]),y:num(r[yi])}));
+  }
+  const columnIndex = ref => { let n=0; for (const c of ref.match(/[A-Z]+/i)?.[0]?.toUpperCase()||'A') n=n*26+c.charCodeAt(0)-64; return n-1; };
+  const xml = text => new DOMParser().parseFromString(text,'application/xml');
+  async function unzipXlsx(buffer) {
+    const bytes=new Uint8Array(buffer), view=new DataView(buffer); let eocd=-1;
+    for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--) if(view.getUint32(i,true)===0x06054b50){eocd=i;break;}
+    if(eocd<0) throw new Error('Excelファイルではありません。');
+    const entries=new Map(); let p=view.getUint32(eocd+16,true), count=view.getUint16(eocd+10,true);
+    for(let i=0;i<count;i++) { if(view.getUint32(p,true)!==0x02014b50) throw new Error('Excelの展開に失敗しました。'); const method=view.getUint16(p+10,true), size=view.getUint32(p+20,true), nameLen=view.getUint16(p+28,true), extraLen=view.getUint16(p+30,true), commentLen=view.getUint16(p+32,true), local=view.getUint32(p+42,true), name=new TextDecoder().decode(bytes.slice(p+46,p+46+nameLen)); const localNameLen=view.getUint16(local+26,true), localExtraLen=view.getUint16(local+28,true), data=bytes.slice(local+30+localNameLen+localExtraLen,local+30+localNameLen+localExtraLen+size); entries.set(name,{method,data}); p+=46+nameLen+extraLen+commentLen; }
+    return async name => { const entry=entries.get(name); if(!entry) return null; if(entry.method===0) return new TextDecoder().decode(entry.data); if(entry.method!==8 || !('DecompressionStream' in window)) throw new Error('このブラウザではExcelの展開に対応していません。'); const stream=new Blob([entry.data]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return new TextDecoder().decode(await new Response(stream).arrayBuffer()); };
+  }
+  async function parseXlsx(buffer) {
+    const get=await unzipXlsx(buffer), decoder=new DOMParser(), sharedXml=await get('xl/sharedStrings.xml'), shared=sharedXml?[...decoder.parseFromString(sharedXml,'application/xml').getElementsByTagName('si')].map(n=>n.textContent||''):[];
+    const wb=xml(await get('xl/workbook.xml')), rels=xml(await get('xl/_rels/workbook.xml.rels')), sheet=wb.getElementsByTagName('sheet')[0]; if(!sheet) throw new Error('シートがありません。');
+    const rid=sheet.getAttribute('r:id'), relation=[...rels.getElementsByTagName('Relationship')].find(r=>r.getAttribute('Id')===rid), target=relation?.getAttribute('Target'); if(!target) throw new Error('先頭シートを取得できません。');
+    const sheetXml=xml(await get('xl/'+target.replace(/^\//,'')),), rows=[];
+    for(const row of sheetXml.getElementsByTagName('row')) { const values=[]; for(const cell of row.getElementsByTagName('c')) { const i=columnIndex(cell.getAttribute('r')||'A1'), type=cell.getAttribute('t'), v=cell.getElementsByTagName('v')[0]?.textContent ?? cell.getElementsByTagName('t')[0]?.textContent ?? ''; values[i]=type==='s'?(shared[Number(v)]??''):v; } rows.push(values); }
+    const text=rows.map(r=>r.map(v=>String(v??'').replace(/,/g,' ')).join(',')).join('\n'); return parseCsv(text);
+  }
+  function selected(ids) { const ps=ids.map(id=>findPoint($(id).value)); if(ps.some(p=>!p) || new Set(ps.map(p=>p.name)).size!==ps.length) throw new Error('異なる既知点を選択してください。'); return ps; }
+  function stationFromResection(x,y,detail,warnings=[],backpointName='') {
+    resectionStation={name:'後方交会機械点',x,y}; populate(); $('station').value='__resection__'; if(backpointName) $('backsight').value=backpointName; resetSetup();
+    const note=warnings.length ? ` 警告：${warnings.join(' / ')}` : '';
+    message('resectionResult',`機械点を設定しました：X ${x.toFixed(3)}　Y ${y.toFixed(3)}。${detail}${note}`,warnings.length?'warn':'ok');
+    message('setupStatus',backpointName ? `機械点とバック点 ${backpointName} を自動セットしました。TSで ${backpointName} を視準し、水平角を0°に設定してからボタンを押してください。` : '機械点を自動セットしました。バック点を選択してTSの水平角を0°に設定してください。',warnings.length?'warn':'');
+    drawPlan();
+  }
+  function calc2() {
+    try {
+      const [a,b]=selected(['r2p1','r2p2']), r0=num($('r2d1').value), r1=num($('r2d2').value), observed=angleNum($('r2angle').value); if(!(r0>0&&r1>0)) throw new Error('2点への水平距離を入力してください。'); if(!Number.isFinite(observed)) throw new Error('既知点1を0°にしたときの既知点2のTS読み角を、度（例：123.456）または度分秒で入力してください。');
+      const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy); if(d===0) throw new Error('既知点座標が同一です。'); if(d>r0+r1 || d<Math.abs(r0-r1)) throw new Error('2つの距離では交点ができません。距離または既知点を確認してください。');
+      const along=(r0*r0-r1*r1+d*d)/(2*d), h=Math.sqrt(Math.max(0,r0*r0-along*along)), bx=a.x+along*dx/d, by=a.y+along*dy/d;
+      const choices=[{x:bx-h*dy/d,y:by+h*dx/d},{x:bx+h*dy/d,y:by-h*dx/d}]; const angle=Math.acos(Math.max(-1,Math.min(1,(r0*r0+r1*r1-d*d)/(2*r0*r1))))*180/Math.PI;
+      const warnings=[]; if(angle<30||angle>150) warnings.push(`交会角 ${angle.toFixed(1)}°（30°未満または150°超は精度低下）`); if(angle<45||angle>135) warnings.push('できれば交会角45°〜135°になる既知点配置を推奨');
+      const predicted=choices.map(p=>normalize(bearing(p,b)-bearing(p,a))), differences=predicted.map(value=>angleDiff(value,observed)), pick=differences[0]<=differences[1]?0:1, matchError=differences[pick];
+      if(matchError>0.05) warnings.push(`TS読み角との照合差 ${dms(matchError)}（既知点・距離・読み角を確認）`);
+      stationFromResection(choices[pick].x,choices[pick].y,`2点後方交会・交会角 ${angle.toFixed(1)}°・読み角 ${dms(observed)}で自動判定（照合差 ${dms(matchError)}）`,warnings,a.name);
+    } catch(e) { message('resectionResult',e.message,'warn'); }
+  }
+  function calc3() {
+    try {
+      const ps=selected(['r3p1','r3p2','r3p3']), ds=['r3d1','r3d2','r3d3'].map(id=>num($(id).value)); if(ds.some(d=>!(d>0))) throw new Error('3点への水平距離を入力してください。');
+      let x=(ps[0].x+ps[1].x+ps[2].x)/3, y=(ps[0].y+ps[1].y+ps[2].y)/3;
+      for(let n=0;n<15;n++) { let aa=0,ab=0,bb=0,ar=0,br=0; ps.forEach((p,i)=>{const vx=x-p.x,vy=y-p.y,r=Math.hypot(vx,vy);if(r<0.0001)throw new Error('既知点上では計算できません。');const jx=vx/r,jy=vy/r,res=r-ds[i];aa+=jx*jx;ab+=jx*jy;bb+=jy*jy;ar+=jx*res;br+=jy*res;});const det=aa*bb-ab*ab;if(Math.abs(det)<1e-8)throw new Error('既知点配置が一直線に近すぎて計算できません。');const stepx=(-bb*ar+ab*br)/det,stepy=(ab*ar-aa*br)/det;x+=stepx;y+=stepy;if(Math.hypot(stepx,stepy)<0.000001)break; }
+      const residuals=ps.map((p,i)=>Math.hypot(x-p.x,y-p.y)-ds[i]), rms=Math.sqrt(residuals.reduce((s,v)=>s+v*v,0)/3), sides=[Math.hypot(ps[1].x-ps[0].x,ps[1].y-ps[0].y),Math.hypot(ps[2].x-ps[1].x,ps[2].y-ps[1].y),Math.hypot(ps[0].x-ps[2].x,ps[0].y-ps[2].y)], maxSide=Math.max(...sides), area=Math.abs((ps[1].x-ps[0].x)*(ps[2].y-ps[0].y)-(ps[1].y-ps[0].y)*(ps[2].x-ps[0].x))/2;
+      const rayAngles=[];
+      for(let i=0;i<3;i++) for(let j=i+1;j<3;j++) { const ux=ps[i].x-x,uy=ps[i].y-y,vx=ps[j].x-x,vy=ps[j].y-y; rayAngles.push(Math.acos(Math.max(-1,Math.min(1,(ux*vx+uy*vy)/(Math.hypot(ux,uy)*Math.hypot(vx,vy)))))*180/Math.PI); }
+      const minRay=Math.min(...rayAngles), maxRay=Math.max(...rayAngles), warnings=[];
+      if(minRay<30 || maxRay>150) warnings.push(`観測方向の夾角 ${minRay.toFixed(1)}°〜${maxRay.toFixed(1)}°（30°未満／150°超は精度低下）`);
+      else if(minRay<45 || maxRay>135) warnings.push(`観測方向の夾角 ${minRay.toFixed(1)}°〜${maxRay.toFixed(1)}°（45°〜135°が望ましい）`);
+      if(area<0.05*maxSide*maxSide) warnings.push('既知点3点がほぼ一直線（配置を広げてください）');
+      if(rms>0.02) warnings.push(`距離残差 RMS ${(rms*1000).toFixed(1)} mm（観測値・既知点を確認）`);
+      stationFromResection(x,y,`3点後方交会・夾角 ${minRay.toFixed(1)}°〜${maxRay.toFixed(1)}°・距離残差 RMS ${(rms*1000).toFixed(1)} mm`,warnings,ps[0].name);
+    } catch(e) { message('resectionResult',e.message,'warn'); }
+  }
+  function clearOffsets(text='目標点・基準線点・離れを入力してください。') { offsetTargets={}; $('offsetChoices').innerHTML=''; $('offsetChoices').classList.add('hidden'); message('offsetStatus',text); drawPlan(); }
+  function showOffset(side) {
+    const stake=offsetTargets[side]; if(!stake) return;
+    if(!zeroReady) return message('offsetStatus','先にバック点を視準してTSの水平角を0°に設定してください。','warn');
+    calculateTo(stake.point,stake.label);
+  }
+  function calcOffsets() {
+    try {
+      const target=findPoint($('target').value), base=findPoint($('offsetBase').value), left=num($('offsetLeft').value), right=num($('offsetRight').value);
+      if(!target || !base || target.name===base.name) throw new Error('目標点と異なる基準線点を選択してください。');
+      if((!Number.isFinite(left)||left<0)&&(!Number.isFinite(right)||right<0)) throw new Error('左または右の離れを0以上で入力してください。');
+      const dx=target.x-base.x, dy=target.y-base.y, len=Math.hypot(dx,dy); if(len<0.01) throw new Error('基準線点と目標点が近すぎて方向を決められません。');
+      const warnings=[]; if(len<10) warnings.push(`基準線長 ${len.toFixed(3)} m（10m未満のため方向精度に注意）`);
+      offsetTargets={};
+      if(Number.isFinite(left)&&left>=0) offsetTargets.left={point:{name:`${target.name} 左 ${left.toFixed(3)}m`,x:target.x+dy/len*left,y:target.y-dx/len*left},label:`${target.name}　左 ${left.toFixed(3)} m 離れ`};
+      if(Number.isFinite(right)&&right>=0) offsetTargets.right={point:{name:`${target.name} 右 ${right.toFixed(3)}m`,x:target.x-dy/len*right,y:target.y+dx/len*right},label:`${target.name}　右 ${right.toFixed(3)} m 離れ`};
+      const box=$('offsetChoices'); box.innerHTML=''; [['left','左離れ杭'],['right','右離れ杭']].forEach(([side,title])=>{ const stake=offsetTargets[side]; if(!stake) return; const b=document.createElement('button'); b.type='button'; b.className='alt'; b.textContent=`${title}\nX ${stake.point.x.toFixed(3)} / Y ${stake.point.y.toFixed(3)}`; b.onclick=()=>showOffset(side); box.append(b); }); box.classList.remove('hidden');
+      message('offsetStatus',`基準線 ${base.name} → ${target.name} に対する左右離れ杭を計算しました。${warnings.length?' 注意：'+warnings.join(' / '):''}`,warnings.length?'warn':'ok'); drawPlan();
+    } catch(e) { clearOffsets(e.message); $('offsetStatus').className='status warn'; }
+  }
+  $('file').addEventListener('change', async e => { const f=e.target.files[0]; if (!f) return; try { const buf=await f.arrayBuffer(); let imported; if(f.name.toLowerCase().endsWith('.xlsx')) imported=await parseXlsx(buf); else { let text=new TextDecoder('utf-8').decode(buf); imported=parseCsv(text); if (!imported.length) { text=new TextDecoder('shift-jis').decode(buf); imported=parseCsv(text); } } if(!imported?.length) throw new Error('点名、X、Yの列が見つかりません。'); setPoints(imported, f.name); } catch(err) { message('fileStatus',`読み込めませんでした：${err.message}`,'warn'); } });
+  $('addPoint').onclick=()=>{ const name=$('manualName').value.trim(), x=num($('manualX').value), y=num($('manualY').value); if (!name || !Number.isFinite(x) || !Number.isFinite(y)) return message('fileStatus','点名、X、Yを入力してください。','warn'); if (points.some(p=>p.name===name)) return message('fileStatus','同じ点名が既にあります。','warn'); points.push({name,x,y}); save(); populate(); $('manualName').value=$('manualX').value=$('manualY').value=''; message('fileStatus',`${name} を追加しました。`,'ok'); };
+  $('station').onchange=$('backsight').onchange=()=>{ resetSetup(); drawPlan(); };
+  $('mode2').onclick=()=>{$('resection2').classList.remove('hidden');$('resection3').classList.add('hidden');$('mode2').className='';$('mode3').className='alt';};
+  $('mode3').onclick=()=>{$('resection3').classList.remove('hidden');$('resection2').classList.add('hidden');$('mode3').className='';$('mode2').className='alt';};
+  $('calcR2').onclick=calc2; $('calcR3').onclick=calc3;
+  $('setZero').onclick=()=>{ const st=findPoint($('station').value), bs=findPoint($('backsight').value); if (!st || !bs || st.name===bs.name) return message('setupStatus','異なる機械点とバック点を選択してください。','warn'); const backDistance=Math.hypot(bs.x-st.x,bs.y-st.y); zeroReady=true; const text=`設定完了：バック点 ${bs.name} を0°として計算します。後視距離 ${backDistance.toFixed(3)} m。`; message('setupStatus', text+(backDistance<10?' 注意：後視距離が10m未満です。可能なら遠い既知点を後視にしてください。':''), backDistance<10?'warn':'ok'); calculate(); };
+  $('target').onchange=()=>{ clearOffsets('目標点が変わりました。離れ杭を再計算してください。'); calculate(); }; $('filter').oninput=populateTargets;
+  $('offsetBase').onchange=()=>{ clearOffsets('基準線点が変わりました。離れ杭を再計算してください。'); };
+  $('planLabels').onchange=drawPlan;
+  $('planZoomOut').onclick=()=>{ planScale=Math.max(0.5,planScale-0.25); drawPlan(); };
+  $('planZoomIn').onclick=()=>{ planScale=Math.min(4,planScale+0.25); drawPlan(); };
+  $('planRotateLeft').onclick=()=>{ planRotation=(planRotation-15+360)%360; drawPlan(); };
+  $('planRotateRight').onclick=()=>{ planRotation=(planRotation+15)%360; drawPlan(); };
+  $('planReset').onclick=()=>{ planScale=1; planRotation=0; planPanX=0; planPanY=0; drawPlan(); };
+  const planCanvas=$('plan');
+  planCanvas.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse' && e.button!==0) return; planDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:planPanX,panY:planPanY}; planCanvas.setPointerCapture?.(e.pointerId); planCanvas.classList.add('dragging'); });
+  planCanvas.addEventListener('pointermove',e=>{ if(!planDrag || e.pointerId!==planDrag.id) return; planPanX=planDrag.panX+e.clientX-planDrag.x; planPanY=planDrag.panY+e.clientY-planDrag.y; drawPlan(); });
+  const endPlanDrag=e=>{ if(!planDrag || e.pointerId!==planDrag.id) return; planCanvas.releasePointerCapture?.(e.pointerId); planDrag=null; planCanvas.classList.remove('dragging'); };
+  planCanvas.addEventListener('pointerup',endPlanDrag); planCanvas.addEventListener('pointercancel',endPlanDrag);
+  const updateFullscreen=()=>{ const active=Boolean(document.fullscreenElement||document.webkitFullscreenElement); $('planFullscreen').textContent=active?'全画面を閉じる':'全画面表示'; requestAnimationFrame(drawPlan); };
+  $('planFullscreen').onclick=async()=>{ const frame=$('planFrame'), active=Boolean(document.fullscreenElement||document.webkitFullscreenElement); try { if(active) { const exit=document.exitFullscreen||document.webkitExitFullscreen; await exit?.call(document); } else { const request=frame.requestFullscreen||frame.webkitRequestFullscreen; if(!request) throw new Error('この端末では全画面表示に対応していません。'); await request.call(frame); } } catch(err) { message('planStatus',`全画面表示を開始できませんでした：${err.message}`,'warn'); } };
+  document.addEventListener('fullscreenchange',updateFullscreen); document.addEventListener('webkitfullscreenchange',updateFullscreen);
+  window.addEventListener('resize',drawPlan);
+  $('calcOffsets').onclick=calcOffsets;
+  $('clearData').onclick=()=>{ if (!confirm('登録した座標をすべて消去しますか？')) return; points=[]; offsetTargets={}; localStorage.removeItem('ts-guide-points-v1'); populate(); resetSetup(); clearOffsets(); message('fileStatus','座標を消去しました。'); };
+  $('previousTarget').onclick=()=>moveTarget(-1); $('nextTarget').onclick=()=>moveTarget(1); $('clearTarget').onclick=()=>{ $('target').value=''; $('resultCard').classList.add('hidden'); };
+  $('exportCsv').onclick=()=>{ if(!points.length) return message('fileStatus','保存する座標がありません。','warn'); const body=['点名,X,Y,H',...points.map(p=>`"${String(p.name).replace(/"/g,'""')}",${p.x},${p.y},0.000`)].join('\r\n'); const url=URL.createObjectURL(new Blob(['\uFEFF'+body],{type:'text/csv'})); const a=document.createElement('a'); a.href=url; a.download='TS座標.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); };
+  try { points=JSON.parse(localStorage.getItem('ts-guide-points-v1')||'[]'); } catch {} populate();
+})();
+</script>
+</body>
+</html>
+
