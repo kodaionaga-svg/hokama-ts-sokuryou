@@ -128,9 +128,11 @@
     <table id="pointTable" class="hidden"><thead><tr><th>点名</th><th>X</th><th>Y</th></tr></thead><tbody></tbody></table>
   </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  const db = supabase.createClient('https://schttjeinzdhjemgtdvi.supabase.co', 'sb_publishable_7HgyHI9HKDD5lvyPnX3tSA_ptePV39_');
   let points = [];
   let zeroReady = false;
   let resectionStation = null;
@@ -148,33 +150,38 @@
   const angleDiff = (a,b) => Math.abs(normalize(a-b+180)-180);
   const findPoint = name => name==='__resection__' ? resectionStation : points.find(p => p.name === name);
 
-  const FIELD_INDEX_KEY = 'ts-guide-fields-v1';
-  const CURRENT_FIELD_KEY = 'ts-guide-current-field-v1';
   let fields = [];
   let currentFieldId = '';
-  const fieldDataKey = id => `ts-guide-points-v2:${id}`;
-  const saveFields = () => localStorage.setItem(FIELD_INDEX_KEY, JSON.stringify(fields));
-  function save() { if (currentFieldId) localStorage.setItem(fieldDataKey(currentFieldId), JSON.stringify(points)); }
-  function newFieldId() { return globalThis.crypto?.randomUUID?.() || `field-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+  async function save() {
+    if (!currentFieldId) return;
+    const removed = await db.from('survey_points').delete().eq('project_id', currentFieldId);
+    if (removed.error) return message('fileStatus', `クラウド保存に失敗しました：${removed.error.message}`, 'warn');
+    if (!points.length) return message('fileStatus', 'この現場の座標をクラウドから削除しました。', 'ok');
+    const result = await db.from('survey_points').insert(points.map(p => ({project_id: currentFieldId, name: p.name, x: p.x, y: p.y, h: p.h ?? null})));
+    if (result.error) message('fileStatus', `クラウド保存に失敗しました：${result.error.message}`, 'warn');
+  }
   function renderFields() {
     const select=$('fieldSelect'); select.innerHTML='';
     fields.forEach(field=>{ const o=document.createElement('option'); o.value=field.id; o.textContent=field.name; select.append(o); });
     select.value=currentFieldId;
   }
-  function loadField(id) {
+  async function loadField(id) {
     currentFieldId=id;
-    localStorage.setItem(CURRENT_FIELD_KEY, id);
-    try { points=JSON.parse(localStorage.getItem(fieldDataKey(id))||'[]'); } catch { points=[]; }
+    const result=await db.from('survey_points').select('name,x,y,h').eq('project_id', id).order('name');
+    if (result.error) return message('fieldStatus', `現場データを読み込めませんでした：${result.error.message}`, 'warn');
+    points=result.data||[];
     resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0;
     renderFields(); populate(); resetSetup(); clearOffsets();
     const field=fields.find(item=>item.id===id);
     message('fieldStatus',`「${field?.name || '現場'}」のデータを表示中です。登録点 ${points.length} 点。`, 'ok');
   }
-  function createField() {
+  async function createField() {
     const name=$('fieldName').value.trim();
     if (!name) return message('fieldStatus','新しい現場名を入力してください。','warn');
     if (fields.some(field=>field.name===name)) return message('fieldStatus','同じ現場名が既にあります。','warn');
-    const field={id:newFieldId(),name}; fields.push(field); saveFields(); $('fieldName').value=''; loadField(field.id);
+    const result=await db.from('survey_projects').insert({name}).select('id,name').single();
+    if (result.error) return message('fieldStatus', `現場を作成できませんでした：${result.error.message}`, 'warn');
+    fields.push(result.data); $('fieldName').value=''; await loadField(result.data.id);
   }
   function message(id, text, kind='') { const el=$(id); el.textContent=text; el.className='status '+kind; }
   function options(select, includeBlank=true) {
@@ -204,7 +211,37 @@
     if(!all.length) { ctx.fillStyle=color('--sub'); ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('座標を読み込むと伏図を表示します',width/2,height/2); $('planStatus').textContent=`北が上、東が右です。倍率 ${zoom}%・回転 ${rotation}°`; return; }
     const xs=all.map(p=>p.x), ys=all.map(p=>p.y), spanX=Math.max(1,Math.max(...xs)-Math.min(...xs)), spanY=Math.max(1,Math.max(...ys)-Math.min(...ys)), centerX=(Math.max(...xs)+Math.min(...xs))/2, centerY=(Math.max(...ys)+Math.min(...ys))/2, pad=32, cos=Math.cos(radians), sin=Math.sin(radians), rotatedWidth=Math.abs(cos)*spanY+Math.abs(sin)*spanX, rotatedHeight=Math.abs(sin)*spanY+Math.abs(cos)*spanX, scale=Math.min((width-pad*2)/rotatedWidth,(height-pad*2)/rotatedHeight)*planScale, pos=p=>{const u=(p.y-centerY)*scale,v=-(p.x-centerX)*scale;return{x:width/2+planPanX+u*cos-v*sin,y:height/2+planPanY+u*sin+v*cos};};
     ctx.fillStyle='#111922'; ctx.fillRect(0,0,width,height); ctx.save(); ctx.translate(width/2+planPanX,height/2+planPanY); ctx.rotate(radians); ctx.strokeStyle=color('--line'); ctx.lineWidth=1; const grid=Math.hypot(width,height); for(let i=-2;i<=2;i++){const v=i*grid/4;ctx.beginPath();ctx.moveTo(v,-grid);ctx.lineTo(v,grid);ctx.moveTo(-grid,v);ctx.lineTo(grid,v);ctx.stroke();} ctx.restore();
-    const line=(a,b,stroke,dash=[])=>{if(!a||!b)return;const A=pos(a),B=pos(b);ctx.save();ctx.strokeSty…1009 tokens truncated…late(); resetSetup(); message('fileStatus',`${points.length} 点を読み込みました（${source}）。`, 'ok');
+    const line=(a,b,stroke,dash=[])=>{if(!a||!b)return;const A=pos(a),B=pos(b);ctx.save();ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.restore();}; line(base,target,color('--warn')); line(station,back,color('--ok'),[5,4]);
+    const labels=$('planLabels').checked, mark=(p,fill,shape,label='')=>{if(!p)return;const q=pos(p);ctx.save();ctx.fillStyle=fill;ctx.strokeStyle='#10151c';ctx.lineWidth=1.5;ctx.beginPath();if(shape==='square')ctx.rect(q.x-5,q.y-5,10,10);else if(shape==='diamond'){ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+6,q.y);ctx.lineTo(q.x,q.y+6);ctx.lineTo(q.x-6,q.y);ctx.closePath();}else if(shape==='triangle'){ctx.moveTo(q.x,q.y-6);ctx.lineTo(q.x+6,q.y+5);ctx.lineTo(q.x-6,q.y+5);ctx.closePath();}else ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.stroke();if(label){ctx.fillStyle=color('--text');ctx.strokeStyle='#10151c';ctx.lineWidth=3;ctx.font='12px system-ui';ctx.textAlign='left';ctx.strokeText(label,q.x+7,q.y-7);ctx.fillText(label,q.x+7,q.y-7);}ctx.restore();};
+    points.forEach(p=>mark(p,color('--sub'),'dot',labels?p.name:'')); mark(station,color('--blue'),'diamond','機械'); mark(back,color('--ok'),'triangle','後視'); mark(target,color('--warn'),'diamond','目標'); mark(left,'#d48cff','square','左'); mark(right,'#ff8a58','square','右');
+    const axis=(label,u,v,stroke)=>{const ox=24,oy=height-24,x=ox+u*cos-v*sin,y=oy+u*sin+v*cos;ctx.save();ctx.strokeStyle=stroke;ctx.fillStyle=stroke;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(x,y);ctx.stroke();ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(label,x,y-4);ctx.restore();}; axis('N',0,-20,color('--text')); axis('E',20,0,color('--sub'));
+    canvas.setAttribute('aria-label',`${points.length}点の伏図。倍率 ${zoom}%、右回転 ${rotation}度です。`); $('planStatus').textContent=`指でドラッグして移動できます。倍率 ${zoom}%・右回転 ${rotation}°｜登録点 ${points.length} 点${resectionStation?'・後方交会機械点':''}${left||right?'・左右離れ杭':''}を表示中。`;
+  }
+  function resetSetup() { zeroReady=false; $('resultCard').classList.add('hidden'); message('setupStatus','機械点とバック点を選択してください。'); }
+  function currentTargets() { return [...$('target').options].filter(o=>o.value); }
+  function moveTarget(direction) {
+    const list=currentTargets(), index=list.findIndex(o=>o.value===$('target').value); if(!list.length) return;
+    const next=list[Math.max(0,Math.min(list.length-1,(index<0?0:index)+direction))]; $('target').value=next.value; calculate();
+  }
+  function calculateTo(tg, label=tg.name) {
+    if (!zeroReady) return false;
+    const st=findPoint($('station').value), bs=findPoint($('backsight').value);
+    if (!st || !bs || !tg || st.name===bs.name || (tg.x===st.x&&tg.y===st.y)) { $('resultCard').classList.add('hidden'); return false; }
+    const dx=tg.x-st.x, dy=tg.y-st.y, dist=Math.hypot(dx,dy), right=normalize(bearing(st,tg)-bearing(st,bs));
+    $('resultName').textContent=label; $('angle').textContent=dms(right); $('distance').textContent=`${dist.toFixed(3)} m`;
+    $('coordDiff').textContent=`ΔX ${dx.toFixed(3)} m　ΔY ${dy.toFixed(3)} m　方位角 ${dms(bearing(st,tg))}`;
+    $('resultCard').classList.remove('hidden');
+    $('runbar').classList.toggle('hidden', currentTargets().length<2);
+    $('resultCard').scrollIntoView({block:'nearest',behavior:'smooth'});
+    if(navigator.vibrate) navigator.vibrate(18);
+    drawPlan();
+    return true;
+  }
+  function calculate() { const tg=findPoint($('target').value); if(!tg) { $('resultCard').classList.add('hidden'); return; } calculateTo(tg); }
+  function setPoints(newPoints, source) {
+    const seen=new Set(); points=newPoints.filter(p=>p.name && Number.isFinite(p.x) && Number.isFinite(p.y) && !seen.has(p.name) && seen.add(p.name));
+    if (!points.length) throw new Error('点名・X・Yのデータ行が見つかりません。');
+    resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0; save(); populate(); resetSetup(); message('fileStatus',`${points.length} 点を読み込みました（${source}）。`, 'ok');
   }
   function parseCsv(text) {
     const rows=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(r=>r.trim()).map(r=>r.split(/[\t,]/).map(v=>v.trim().replace(/^"|"$/g,'')));
@@ -329,21 +366,19 @@
   $('fieldSelect').onchange=e=>loadField(e.target.value);
   $('createField').onclick=createField;
   $('fieldName').addEventListener('keydown',e=>{ if(e.key==='Enter') { e.preventDefault(); createField(); } });
-  $('deleteField').onclick=()=>{ const field=fields.find(item=>item.id===currentFieldId); if(!field || !confirm(`「${field.name}」の座標データをすべて削除しますか？`)) return; localStorage.removeItem(fieldDataKey(field.id)); fields=fields.filter(item=>item.id!==field.id); if(!fields.length) fields.push({id:newFieldId(),name:'新規現場'}); saveFields(); loadField(fields[0].id); };
-  $('clearData').onclick=()=>{ const field=fields.find(item=>item.id===currentFieldId); if (!confirm(`「${field?.name || 'この現場'}」の登録座標をすべて消去しますか？`)) return; points=[]; offsetTargets={}; localStorage.removeItem(fieldDataKey(currentFieldId)); populate(); resetSetup(); clearOffsets(); message('fileStatus','この現場の座標を消去しました。'); };
+  $('deleteField').onclick=async()=>{ const field=fields.find(item=>item.id===currentFieldId); if(!field || !confirm(`「${field.name}」と登録座標をクラウドからすべて削除しますか？`)) return; const result=await db.from('survey_projects').delete().eq('id',field.id); if(result.error) return message('fieldStatus',`現場を削除できませんでした：${result.error.message}`,'warn'); fields=fields.filter(item=>item.id!==field.id); if(!fields.length) { const created=await db.from('survey_projects').insert({name:'新規現場'}).select('id,name').single(); if(created.error) return message('fieldStatus',`現場を作成できませんでした：${created.error.message}`,'warn'); fields=[created.data]; } await loadField(fields[0].id); };
+  $('clearData').onclick=async()=>{ const field=fields.find(item=>item.id===currentFieldId); if (!confirm(`「${field?.name || 'この現場'}」の登録座標をクラウドからすべて消去しますか？`)) return; points=[]; offsetTargets={}; await save(); populate(); resetSetup(); clearOffsets(); message('fileStatus','この現場の座標をクラウドから消去しました。'); };
   $('previousTarget').onclick=()=>moveTarget(-1); $('nextTarget').onclick=()=>moveTarget(1); $('clearTarget').onclick=()=>{ $('target').value=''; $('resultCard').classList.add('hidden'); };
   $('exportCsv').onclick=()=>{ if(!points.length) return message('fileStatus','保存する座標がありません。','warn'); const body=['点名,X,Y,H',...points.map(p=>`"${String(p.name).replace(/"/g,'""')}",${p.x},${p.y},0.000`)].join('\r\n'); const url=URL.createObjectURL(new Blob(['\uFEFF'+body],{type:'text/csv'})); const a=document.createElement('a'); a.href=url; a.download='TS座標.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); };
-  try { fields=JSON.parse(localStorage.getItem(FIELD_INDEX_KEY)||'[]'); } catch { fields=[]; }
-  if (!Array.isArray(fields)) fields=[];
-  if (!fields.length) {
-    const legacy=localStorage.getItem('ts-guide-points-v1');
-    const initial={id:newFieldId(),name:legacy?'移行済み現場':'新規現場'};
-    fields=[initial]; saveFields();
-    if (legacy) { localStorage.setItem(fieldDataKey(initial.id), legacy); localStorage.removeItem('ts-guide-points-v1'); }
-  }
-  const savedFieldId=localStorage.getItem(CURRENT_FIELD_KEY);
-  loadField(fields.some(field=>field.id===savedFieldId) ? savedFieldId : fields[0].id);
+  (async()=>{
+    const result=await db.from('survey_projects').select('id,name').order('name');
+    if (result.error) return message('fieldStatus', `クラウド現場一覧を読み込めませんでした：${result.error.message}`, 'warn');
+    fields=result.data||[];
+    if (!fields.length) { const created=await db.from('survey_projects').insert({name:'新規現場'}).select('id,name').single(); if(created.error) return message('fieldStatus',`最初の現場を作成できませんでした：${created.error.message}`,'warn'); fields=[created.data]; }
+    await loadField(fields[0].id);
+  })();
 })();
 </script>
 </body>
 </html>
+
