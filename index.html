@@ -127,7 +127,7 @@
     <h2>7. 杭打ち・出来形計算</h2>
     <p class="hint">設計値と実測値を入れると、平面差・標高差・勾配を自動計算し、許容差で判定します。</p>
     <div class="grid"><div><label>設計 X<input id="designX" inputmode="decimal"></label><label>設計 Y<input id="designY" inputmode="decimal"></label><label>設計 H<input id="designH" inputmode="decimal"></label></div><div><label>実測 X<input id="actualX" inputmode="decimal"></label><label>実測 Y<input id="actualY" inputmode="decimal"></label><label>実測 H<input id="actualH" inputmode="decimal"></label></div></div>
-    <label>許容差（mm）<input id="tolerance" inputmode="decimal" value="10"></label>
+    <div class="grid3"><label>X許容差（mm）<input id="toleranceX" inputmode="decimal" value="10"></label><label>Y許容差（mm）<input id="toleranceY" inputmode="decimal" value="10"></label><label>H許容差（mm）<input id="toleranceH" inputmode="decimal" value="10"></label></div>
     <button id="calcAsBuilt" type="button">出来形を判定する</button>
     <div id="asBuiltResult" class="status">設計値・実測値・許容差を入力してください。</div>
   </section>
@@ -228,10 +228,13 @@
     $('obsMemo').value=''; $('obsPhoto').value=''; message('obsStatus','観測記録を保存しました。','ok'); loadObservations();
   }
   function calcAsBuilt() {
-    const dx=num($('actualX').value)-num($('designX').value), dy=num($('actualY').value)-num($('designY').value), dh=num($('actualH').value)-num($('designH').value), tolerance=num($('tolerance').value);
-    if(![dx,dy,dh,tolerance].every(Number.isFinite)||tolerance<0) return message('asBuiltResult','設計値・実測値・0以上の許容差をすべて入力してください。','warn');
-    const horizontal=Math.hypot(dx,dy), errorMm=Math.max(horizontal,Math.abs(dh))*1000, ok=errorMm<=tolerance, grade=horizontal>0 ? dh/horizontal*100 : 0;
-    message('asBuiltResult',`${ok?'OK':'要確認'}｜平面差 ${(horizontal*1000).toFixed(1)} mm ／ 標高差 ${(dh*1000).toFixed(1)} mm ／ 勾配 ${grade.toFixed(3)} % ／ 許容差 ${tolerance.toFixed(1)} mm`,ok?'ok':'warn');
+    const dx=num($('actualX').value)-num($('designX').value), dy=num($('actualY').value)-num($('designY').value), dh=num($('actualH').value)-num($('designH').value);
+    const tx=num($('toleranceX').value), ty=num($('toleranceY').value), th=num($('toleranceH').value);
+    if(![dx,dy,dh,tx,ty,th].every(Number.isFinite)||[tx,ty,th].some(value=>value<0)) return message('asBuiltResult','設計値・実測値・X／Y／Hの0以上の許容差をすべて入力してください。','warn');
+    const xMm=dx*1000, yMm=dy*1000, hMm=dh*1000, horizontal=Math.hypot(dx,dy), grade=horizontal>0 ? dh/horizontal*100 : 0;
+    const result=(label,value,tolerance)=>`${label} ${value>=0?'+':''}${value.toFixed(1)} mm（±${tolerance.toFixed(1)}） ${Math.abs(value)<=tolerance?'OK':'要確認'}`;
+    const ok=Math.abs(xMm)<=tx && Math.abs(yMm)<=ty && Math.abs(hMm)<=th;
+    message('asBuiltResult',`${ok?'総合判定：OK':'総合判定：要確認'}｜${result('X',xMm,tx)} ／ ${result('Y',yMm,ty)} ／ ${result('H',hMm,th)} ／ 平面差 ${(horizontal*1000).toFixed(1)} mm ／ 勾配 ${grade.toFixed(3)} %`,ok?'ok':'warn');
   }
   function populateTargets() {
     const q=$('filter').value.trim().toLowerCase(), current=$('target').value;
