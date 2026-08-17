@@ -37,7 +37,7 @@
 <main>
   <p class="eyebrow">FIELD STAKEOUT</p>
   <h1>TS 誘導計算</h1>
-  <p class="lead">座標は端末内で処理・保存されます。後方交会で据付点を計算し、後視を0°にして目標点を誘導します。</p>
+  <p class="lead">座標は現場ごとにクラウドへ保存されます。後方交会で据付点を計算し、後視を0°にして目標点を誘導します。</p>
 
   <section class="card">
     <h2>現場を選択</h2>
@@ -264,6 +264,19 @@
     const start=headerRow>=0?headerRow+1:0, ni=nameIndex, xi=xIndex, yi=yIndex;
     return rows.slice(start).map(r=>({name:r[ni],x:num(r[xi]),y:num(r[yi])}));
   }
+  function decodeCsv(buffer) {
+    // UTF-8 を厳密に判定し、失敗した CSV は測量ソフトや Excel で一般的な CP932 として読む。
+    // 従来は UTF-8 の置換文字を含んだまま解析していたため、点名だけが文字化けしていた。
+    try {
+      return { text: new TextDecoder('utf-8', { fatal: true }).decode(buffer), encoding: 'UTF-8' };
+    } catch (_) {
+      try {
+        return { text: new TextDecoder('shift-jis', { fatal: true }).decode(buffer), encoding: 'Shift_JIS（CP932）' };
+      } catch (_) {
+        return { text: new TextDecoder('euc-jp', { fatal: false }).decode(buffer), encoding: 'EUC-JP' };
+      }
+    }
+  }
   const columnIndex = ref => { let n=0; for (const c of ref.match(/[A-Z]+/i)?.[0]?.toUpperCase()||'A') n=n*26+c.charCodeAt(0)-64; return n-1; };
   const xml = text => new DOMParser().parseFromString(text,'application/xml');
   async function unzipXlsx(buffer) {
@@ -338,7 +351,7 @@
       message('offsetStatus',`基準線 ${base.name} → ${target.name} に対する左右離れ杭を計算しました。${warnings.length?' 注意：'+warnings.join(' / '):''}`,warnings.length?'warn':'ok'); drawPlan();
     } catch(e) { clearOffsets(e.message); $('offsetStatus').className='status warn'; }
   }
-  $('file').addEventListener('change', async e => { const f=e.target.files[0]; if (!f) return; try { const buf=await f.arrayBuffer(); let imported; if(f.name.toLowerCase().endsWith('.xlsx')) imported=await parseXlsx(buf); else { let text=new TextDecoder('utf-8').decode(buf); imported=parseCsv(text); if (!imported.length) { text=new TextDecoder('shift-jis').decode(buf); imported=parseCsv(text); } } if(!imported?.length) throw new Error('点名、X、Yの列が見つかりません。'); setPoints(imported, f.name); } catch(err) { message('fileStatus',`読み込めませんでした：${err.message}`,'warn'); } });
+  $('file').addEventListener('change', async e => { const f=e.target.files[0]; if (!f) return; try { const buf=await f.arrayBuffer(); let imported, source=f.name; if(f.name.toLowerCase().endsWith('.xlsx')) imported=await parseXlsx(buf); else { const decoded=decodeCsv(buf); imported=parseCsv(decoded.text); source=`${f.name}／${decoded.encoding}`; } if(!imported?.length) throw new Error('点名、X、Yの列が見つかりません。'); setPoints(imported, source); } catch(err) { message('fileStatus',`読み込めませんでした：${err.message}`,'warn'); } });
   $('addPoint').onclick=()=>{ const name=$('manualName').value.trim(), x=num($('manualX').value), y=num($('manualY').value); if (!name || !Number.isFinite(x) || !Number.isFinite(y)) return message('fileStatus','点名、X、Yを入力してください。','warn'); if (points.some(p=>p.name===name)) return message('fileStatus','同じ点名が既にあります。','warn'); points.push({name,x,y}); save(); populate(); $('manualName').value=$('manualX').value=$('manualY').value=''; message('fileStatus',`${name} を追加しました。`,'ok'); };
   $('station').onchange=$('backsight').onchange=()=>{ resetSetup(); drawPlan(); };
   $('mode2').onclick=()=>{$('resection2').classList.remove('hidden');$('resection3').classList.add('hidden');$('mode2').className='';$('mode3').className='alt';};
