@@ -16,7 +16,7 @@
     .eyebrow { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin:0 0 2px; }
     .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0; }
     h2 { font-size:17px; margin:0 0 12px; } label { display:block; margin:10px 0 5px; color:var(--sub); font-size:13px; }
-    select,input,button { width:100%; min-height:45px; border-radius:9px; border:1px solid var(--line); padding:9px 11px; background:#111922; color:var(--text); font:inherit; } input[type="checkbox"] { width:auto; min-height:0; padding:0; vertical-align:middle; accent-color:var(--blue); }
+    select,input,textarea,button { width:100%; min-height:45px; border-radius:9px; border:1px solid var(--line); padding:9px 11px; background:#111922; color:var(--text); font:inherit; } input[type="checkbox"] { width:auto; min-height:0; padding:0; vertical-align:middle; accent-color:var(--blue); }
     button { cursor:pointer; background:#1269ae; border-color:#268ed8; font-weight:700; touch-action:manipulation; } button.alt { background:#263545; border-color:#3b5064; } button.danger { background:#62353a; border-color:#a14e58; }
     button:focus-visible,select:focus-visible,input:focus-visible { outline:3px solid #83c9ff; outline-offset:2px; }
     .grid { display:grid; gap:10px; grid-template-columns:1fr 1fr; } .grid3 { display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr; }
@@ -53,6 +53,7 @@
     <p id="fileStatus" class="status">CSV または Excel（.xlsx）：点名, X, Y, H（Hは省略可）。先頭シートを読み込みます。</p>
     <details><summary>点を手入力する</summary>
       <div class="grid3"><label>点名<input id="manualName" placeholder="例：NO.1"></label><label>X（北）<input id="manualX" inputmode="decimal"></label><label>Y（東）<input id="manualY" inputmode="decimal"></label></div>
+      <label>標高 H（m・任意）<input id="manualH" inputmode="decimal" placeholder="例：12.345"></label>
       <button id="addPoint" class="alt" type="button">点を追加</button>
     </details>
   </section>
@@ -123,6 +124,26 @@
   </section>
 
   <section class="card">
+    <h2>7. 杭打ち・出来形計算</h2>
+    <p class="hint">設計値と実測値を入れると、平面差・標高差・勾配を自動計算し、許容差で判定します。</p>
+    <div class="grid"><div><label>設計 X<input id="designX" inputmode="decimal"></label><label>設計 Y<input id="designY" inputmode="decimal"></label><label>設計 H<input id="designH" inputmode="decimal"></label></div><div><label>実測 X<input id="actualX" inputmode="decimal"></label><label>実測 Y<input id="actualY" inputmode="decimal"></label><label>実測 H<input id="actualH" inputmode="decimal"></label></div></div>
+    <label>許容差（mm）<input id="tolerance" inputmode="decimal" value="10"></label>
+    <button id="calcAsBuilt" type="button">出来形を判定する</button>
+    <div id="asBuiltResult" class="status">設計値・実測値・許容差を入力してください。</div>
+  </section>
+
+  <section class="card">
+    <h2>8. 観測記録</h2>
+    <p class="hint">測定日・担当者・使用機器・天候・メモを現場ごとに保存します。写真は共有URLを記録できます。</p>
+    <div class="grid"><label>測点<select id="obsPoint"></select></label><label>測定日<input id="obsDate" type="date"></label></div>
+    <div class="grid"><label>担当者<input id="obsOperator" placeholder="例：山田"></label><label>使用機器<input id="obsInstrument" value="TOPCON QS5AC"></label></div>
+    <label>天候<input id="obsWeather" placeholder="例：晴れ"></label><label>写真URL（任意）<input id="obsPhoto" placeholder="共有写真のURL"></label><label>メモ<textarea id="obsMemo" rows="3" placeholder="観測条件・注意事項"></textarea></label>
+    <button id="saveObservation" type="button">観測記録を保存</button>
+    <p id="obsStatus" class="status">保存済み観測記録を読み込みます。</p>
+    <table id="obsTable" class="hidden"><thead><tr><th>日付</th><th>測点</th><th>担当</th><th>機器</th><th>メモ</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card">
     <div class="actions"><button id="clearData" class="danger" type="button">座標を消去</button><button id="exportCsv" class="alt" type="button">座標をCSV保存</button></div>
     <p class="hint">計算は X＝北、Y＝東として方位を時計回りに扱います。観測値ではなく、座標から求める設計値です。利用前に機械高・プリズム高・座標系などの現場条件を確認してください。</p>
     <table id="pointTable" class="hidden"><thead><tr><th>点名</th><th>X</th><th>Y</th></tr></thead><tbody></tbody></table>
@@ -171,7 +192,7 @@
     if (result.error) return message('fieldStatus', `現場データを読み込めませんでした：${result.error.message}`, 'warn');
     points=result.data||[];
     resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0;
-    renderFields(); populate(); resetSetup(); clearOffsets();
+    renderFields(); populate(); resetSetup(); clearOffsets(); loadObservations();
     const field=fields.find(item=>item.id===id);
     message('fieldStatus',`「${field?.name || '現場'}」のデータを表示中です。登録点 ${points.length} 点。`, 'ok');
   }
@@ -190,7 +211,28 @@
     points.forEach(p => { const o=document.createElement('option'); o.value=p.name; o.textContent=`${p.name}  (X ${p.x}, Y ${p.y})`; select.append(o); });
     if (current==='__resection__' && resectionStation || points.some(p=>p.name===current)) select.value=current;
   }
-  function populate() { options($('station')); options($('backsight')); ['r2p1','r2p2','r3p1','r3p2','r3p3','offsetBase'].forEach(id=>options($(id))); populateTargets(); renderTable(); drawPlan(); }
+  function populate() { options($('station')); options($('backsight')); ['r2p1','r2p2','r3p1','r3p2','r3p3','offsetBase','obsPoint'].forEach(id=>options($(id))); populateTargets(); renderTable(); drawPlan(); }
+  async function loadObservations() {
+    if(!currentFieldId) return;
+    const result=await db.from('survey_observations').select('*').eq('project_id',currentFieldId).order('observed_at',{ascending:false}).limit(20);
+    if(result.error) return message('obsStatus',`観測記録を読み込めませんでした：${result.error.message}`,'warn');
+    const table=$('obsTable'), body=table.querySelector('tbody'); body.innerHTML='';
+    (result.data||[]).forEach(row=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(row.observed_at)}</td><td>${escapeHtml(row.point_name)}</td><td>${escapeHtml(row.operator_name)}</td><td>${escapeHtml(row.instrument)}</td><td>${escapeHtml(row.memo)}</td>`; body.append(tr); });
+    table.classList.toggle('hidden',!(result.data||[]).length); message('obsStatus',`保存済み観測記録 ${(result.data||[]).length} 件を表示しています。`,'ok');
+  }
+  async function saveObservation() {
+    const point=$('obsPoint').value, observedAt=$('obsDate').value, operator=$('obsOperator').value.trim();
+    if(!point || !observedAt || !operator) return message('obsStatus','測点・測定日・担当者を入力してください。','warn');
+    const result=await db.from('survey_observations').insert({project_id:currentFieldId,point_name:point,observed_at:observedAt,operator_name:operator,instrument:$('obsInstrument').value.trim(),weather:$('obsWeather').value.trim(),photo_url:$('obsPhoto').value.trim(),memo:$('obsMemo').value.trim()});
+    if(result.error) return message('obsStatus',`観測記録を保存できませんでした：${result.error.message}`,'warn');
+    $('obsMemo').value=''; $('obsPhoto').value=''; message('obsStatus','観測記録を保存しました。','ok'); loadObservations();
+  }
+  function calcAsBuilt() {
+    const dx=num($('actualX').value)-num($('designX').value), dy=num($('actualY').value)-num($('designY').value), dh=num($('actualH').value)-num($('designH').value), tolerance=num($('tolerance').value);
+    if(![dx,dy,dh,tolerance].every(Number.isFinite)||tolerance<0) return message('asBuiltResult','設計値・実測値・0以上の許容差をすべて入力してください。','warn');
+    const horizontal=Math.hypot(dx,dy), errorMm=Math.max(horizontal,Math.abs(dh))*1000, ok=errorMm<=tolerance, grade=horizontal>0 ? dh/horizontal*100 : 0;
+    message('asBuiltResult',`${ok?'OK':'要確認'}｜平面差 ${(horizontal*1000).toFixed(1)} mm ／ 標高差 ${(dh*1000).toFixed(1)} mm ／ 勾配 ${grade.toFixed(3)} % ／ 許容差 ${tolerance.toFixed(1)} mm`,ok?'ok':'warn');
+  }
   function populateTargets() {
     const q=$('filter').value.trim().toLowerCase(), current=$('target').value;
     $('target').innerHTML='<option value="">目標点を選択</option>';
@@ -239,8 +281,14 @@
   }
   function calculate() { const tg=findPoint($('target').value); if(!tg) { $('resultCard').classList.add('hidden'); return; } calculateTo(tg); }
   function setPoints(newPoints, source) {
-    const seen=new Set(); points=newPoints.filter(p=>p.name && Number.isFinite(p.x) && Number.isFinite(p.y) && !seen.has(p.name) && seen.add(p.name));
-    if (!points.length) throw new Error('点名・X・Yのデータ行が見つかりません。');
+    const invalid=newPoints.filter(p=>!p.name || !Number.isFinite(p.x) || !Number.isFinite(p.y));
+    const duplicateNames=newPoints.map(p=>p.name).filter((name,index,list)=>name&&list.indexOf(name)!==index);
+    const outliers=newPoints.filter(p=>Math.abs(p.x)>10000000 || Math.abs(p.y)>10000000 || (Number.isFinite(p.h)&&Math.abs(p.h)>100000));
+    if(invalid.length) throw new Error(`必須の点名・X・Yが不足した行が ${invalid.length} 件あります。`);
+    if(duplicateNames.length) throw new Error(`同じ測点名があります：${[...new Set(duplicateNames)].join('、')}`);
+    if(outliers.length) throw new Error(`範囲外の座標または異常な標高があります：${outliers.map(p=>p.name).join('、')}`);
+    if(!confirm(`${points.length} 点を ${newPoints.length} 点へ置き換えてクラウド保存します。よろしいですか？`)) return;
+    points=newPoints;
     resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0; save(); populate(); resetSetup(); message('fileStatus',`${points.length} 点を読み込みました（${source}）。`, 'ok');
   }
   function parseCsv(text) {
@@ -249,9 +297,10 @@
     const normal = v => String(v).toLowerCase().replace(/[\s　_()（）\[\]【】]/g,'');
     const isX = v => /^(x|北|north)$|^(x|北|north).*(座標|coord)|^(座標|coord).*(x|北|north)$/.test(normal(v));
     const isY = v => /^(y|東|east)$|^(y|東|east).*(座標|coord)|^(座標|coord).*(y|東|east)$/.test(normal(v));
+    const isH = v => /^(h|z|標高|高さ|elevation)$/.test(normal(v));
     const isName = v => /^(点名|点番号|名称|name|point|no\.?|no)$/i.test(normal(v));
-    let headerRow=-1, nameIndex=0, xIndex=1, yIndex=2;
-    for(let i=0;i<Math.min(rows.length,30);i++) { const header=rows[i]; const xi=header.findIndex(isX), yi=header.findIndex(isY); if(xi>=0 && yi>=0) { headerRow=i; xIndex=xi; yIndex=yi; const ni=header.findIndex(isName); nameIndex=ni>=0?ni:0; break; } }
+    let headerRow=-1, nameIndex=0, xIndex=1, yIndex=2, hIndex=-1;
+    for(let i=0;i<Math.min(rows.length,30);i++) { const header=rows[i]; const xi=header.findIndex(isX), yi=header.findIndex(isY); if(xi>=0 && yi>=0) { headerRow=i; xIndex=xi; yIndex=yi; hIndex=header.findIndex(isH); const ni=header.findIndex(isName); nameIndex=ni>=0?ni:0; break; } }
     if(headerRow<0) {
       const maxCols=Math.max(...rows.map(r=>r.length)); let best=null;
       for(let candidateX=1;candidateX<maxCols-1;candidateX++) {
@@ -261,8 +310,8 @@
       }
       if(best?.matches) { nameIndex=best.candidateX-1; xIndex=best.candidateX; yIndex=best.candidateX+1; }
     }
-    const start=headerRow>=0?headerRow+1:0, ni=nameIndex, xi=xIndex, yi=yIndex;
-    return rows.slice(start).map(r=>({name:r[ni],x:num(r[xi]),y:num(r[yi])}));
+    const start=headerRow>=0?headerRow+1:0, ni=nameIndex, xi=xIndex, yi=yIndex, hi=hIndex;
+    return rows.slice(start).map(r=>({name:r[ni],x:num(r[xi]),y:num(r[yi]),h:hi>=0?num(r[hi]):null}));
   }
   function decodeCsv(buffer) {
     // UTF-8 を厳密に判定し、失敗した CSV は測量ソフトや Excel で一般的な CP932 として読む。
@@ -352,7 +401,7 @@
     } catch(e) { clearOffsets(e.message); $('offsetStatus').className='status warn'; }
   }
   $('file').addEventListener('change', async e => { const f=e.target.files[0]; if (!f) return; try { const buf=await f.arrayBuffer(); let imported, source=f.name; if(f.name.toLowerCase().endsWith('.xlsx')) imported=await parseXlsx(buf); else { const decoded=decodeCsv(buf); imported=parseCsv(decoded.text); source=`${f.name}／${decoded.encoding}`; } if(!imported?.length) throw new Error('点名、X、Yの列が見つかりません。'); setPoints(imported, source); } catch(err) { message('fileStatus',`読み込めませんでした：${err.message}`,'warn'); } });
-  $('addPoint').onclick=()=>{ const name=$('manualName').value.trim(), x=num($('manualX').value), y=num($('manualY').value); if (!name || !Number.isFinite(x) || !Number.isFinite(y)) return message('fileStatus','点名、X、Yを入力してください。','warn'); if (points.some(p=>p.name===name)) return message('fileStatus','同じ点名が既にあります。','warn'); points.push({name,x,y}); save(); populate(); $('manualName').value=$('manualX').value=$('manualY').value=''; message('fileStatus',`${name} を追加しました。`,'ok'); };
+  $('addPoint').onclick=()=>{ const name=$('manualName').value.trim(), x=num($('manualX').value), y=num($('manualY').value), h=num($('manualH').value); if (!name || !Number.isFinite(x) || !Number.isFinite(y)) return message('fileStatus','点名、X、Yを入力してください。','warn'); if (points.some(p=>p.name===name)) return message('fileStatus','同じ点名が既にあります。','warn'); if(Math.abs(x)>10000000||Math.abs(y)>10000000||(Number.isFinite(h)&&Math.abs(h)>100000)) return message('fileStatus','範囲外の座標または異常な標高です。','warn'); points.push({name,x,y,h:Number.isFinite(h)?h:null}); save(); populate(); $('manualName').value=$('manualX').value=$('manualY').value=$('manualH').value=''; message('fileStatus',`${name} を追加しました。`,'ok'); };
   $('station').onchange=$('backsight').onchange=()=>{ resetSetup(); drawPlan(); };
   $('mode2').onclick=()=>{$('resection2').classList.remove('hidden');$('resection3').classList.add('hidden');$('mode2').className='';$('mode3').className='alt';};
   $('mode3').onclick=()=>{$('resection3').classList.remove('hidden');$('resection2').classList.add('hidden');$('mode3').className='';$('mode2').className='alt';};
@@ -376,13 +425,16 @@
   document.addEventListener('fullscreenchange',updateFullscreen); document.addEventListener('webkitfullscreenchange',updateFullscreen);
   window.addEventListener('resize',drawPlan);
   $('calcOffsets').onclick=calcOffsets;
+  $('calcAsBuilt').onclick=calcAsBuilt;
+  $('saveObservation').onclick=saveObservation;
+  $('obsDate').value=new Date().toISOString().slice(0,10);
   $('fieldSelect').onchange=e=>loadField(e.target.value);
   $('createField').onclick=createField;
   $('fieldName').addEventListener('keydown',e=>{ if(e.key==='Enter') { e.preventDefault(); createField(); } });
   $('deleteField').onclick=async()=>{ const field=fields.find(item=>item.id===currentFieldId); if(!field || !confirm(`「${field.name}」と登録座標をクラウドからすべて削除しますか？`)) return; const result=await db.from('survey_projects').delete().eq('id',field.id); if(result.error) return message('fieldStatus',`現場を削除できませんでした：${result.error.message}`,'warn'); fields=fields.filter(item=>item.id!==field.id); if(!fields.length) { const created=await db.from('survey_projects').insert({name:'新規現場'}).select('id,name').single(); if(created.error) return message('fieldStatus',`現場を作成できませんでした：${created.error.message}`,'warn'); fields=[created.data]; } await loadField(fields[0].id); };
   $('clearData').onclick=async()=>{ const field=fields.find(item=>item.id===currentFieldId); if (!confirm(`「${field?.name || 'この現場'}」の登録座標をクラウドからすべて消去しますか？`)) return; points=[]; offsetTargets={}; await save(); populate(); resetSetup(); clearOffsets(); message('fileStatus','この現場の座標をクラウドから消去しました。'); };
   $('previousTarget').onclick=()=>moveTarget(-1); $('nextTarget').onclick=()=>moveTarget(1); $('clearTarget').onclick=()=>{ $('target').value=''; $('resultCard').classList.add('hidden'); };
-  $('exportCsv').onclick=()=>{ if(!points.length) return message('fileStatus','保存する座標がありません。','warn'); const body=['点名,X,Y,H',...points.map(p=>`"${String(p.name).replace(/"/g,'""')}",${p.x},${p.y},0.000`)].join('\r\n'); const url=URL.createObjectURL(new Blob(['\uFEFF'+body],{type:'text/csv'})); const a=document.createElement('a'); a.href=url; a.download='TS座標.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); };
+  $('exportCsv').onclick=()=>{ if(!points.length) return message('fileStatus','保存する座標がありません。','warn'); const body=['点名,X,Y,H',...points.map(p=>`"${String(p.name).replace(/"/g,'""')}",${p.x},${p.y},${Number.isFinite(Number(p.h))?Number(p.h).toFixed(3):''}`)].join('\r\n'); const url=URL.createObjectURL(new Blob(['\uFEFF'+body],{type:'text/csv'})); const a=document.createElement('a'); a.href=url; a.download='TS座標.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); };
   (async()=>{
     const result=await db.from('survey_projects').select('id,name').order('name');
     if (result.error) return message('fieldStatus', `クラウド現場一覧を読み込めませんでした：${result.error.message}`, 'warn');
