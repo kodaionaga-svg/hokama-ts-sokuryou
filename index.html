@@ -163,6 +163,8 @@
   let planPanX = 0;
   let planPanY = 0;
   let planDrag = null;
+  const planPointers = new Map();
+  let planPinch = null;
   const normalize = d => ((d % 360) + 360) % 360;
   const bearing = (a,b) => normalize(Math.atan2(b.y-a.y, b.x-a.x) * 180 / Math.PI);
   const dms = deg => { let s=Math.round(normalize(deg)*3600), d=Math.floor(s/3600); s-=d*3600; const m=Math.floor(s/60); s-=m*60; return `${d}°${String(m).padStart(2,'0')}′${String(s).padStart(2,'0')}″`; };
@@ -419,9 +421,11 @@
   $('planRotateRight').onclick=()=>{ planRotation=(planRotation+15)%360; drawPlan(); };
   $('planReset').onclick=()=>{ planScale=1; planRotation=0; planPanX=0; planPanY=0; drawPlan(); };
   const planCanvas=$('plan');
-  planCanvas.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse' && e.button!==0) return; planDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:planPanX,panY:planPanY}; planCanvas.setPointerCapture?.(e.pointerId); planCanvas.classList.add('dragging'); });
-  planCanvas.addEventListener('pointermove',e=>{ if(!planDrag || e.pointerId!==planDrag.id) return; planPanX=planDrag.panX+e.clientX-planDrag.x; planPanY=planDrag.panY+e.clientY-planDrag.y; drawPlan(); });
-  const endPlanDrag=e=>{ if(!planDrag || e.pointerId!==planDrag.id) return; planCanvas.releasePointerCapture?.(e.pointerId); planDrag=null; planCanvas.classList.remove('dragging'); };
+  const pointerPair=()=>Array.from(planPointers.values());
+  const beginPinch=()=>{ const [a,b]=pointerPair(); if(!a||!b) return; planPinch={distance:Math.hypot(b.x-a.x,b.y-a.y),centerX:(a.x+b.x)/2,centerY:(a.y+b.y)/2,scale:planScale,panX:planPanX,panY:planPanY}; planDrag=null; };
+  planCanvas.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse' && e.button!==0) return; planPointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); planCanvas.setPointerCapture?.(e.pointerId); if(planPointers.size===2) beginPinch(); else planDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:planPanX,panY:planPanY}; planCanvas.classList.add('dragging'); });
+  planCanvas.addEventListener('pointermove',e=>{ if(!planPointers.has(e.pointerId)) return; planPointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(planPointers.size>=2&&planPinch){ const [a,b]=pointerPair(),distance=Math.hypot(b.x-a.x,b.y-a.y),centerX=(a.x+b.x)/2,centerY=(a.y+b.y)/2; planScale=Math.min(4,Math.max(0.5,planPinch.scale*(distance/Math.max(1,planPinch.distance)))); planPanX=planPinch.panX+centerX-planPinch.centerX; planPanY=planPinch.panY+centerY-planPinch.centerY; drawPlan(); return; } if(planDrag&&e.pointerId===planDrag.id){ planPanX=planDrag.panX+e.clientX-planDrag.x; planPanY=planDrag.panY+e.clientY-planDrag.y; drawPlan(); } });
+  const endPlanDrag=e=>{ if(!planPointers.has(e.pointerId)) return; planCanvas.releasePointerCapture?.(e.pointerId); planPointers.delete(e.pointerId); if(planPointers.size===1){const [p]=pointerPair(); planDrag={id:Array.from(planPointers.keys())[0],x:p.x,y:p.y,panX:planPanX,panY:planPanY};} else if(!planPointers.size){planDrag=null;planCanvas.classList.remove('dragging');} planPinch=null; };
   planCanvas.addEventListener('pointerup',endPlanDrag); planCanvas.addEventListener('pointercancel',endPlanDrag);
   const updateFullscreen=()=>{ const active=Boolean(document.fullscreenElement||document.webkitFullscreenElement); $('planFullscreen').textContent=active?'全画面を閉じる':'全画面表示'; requestAnimationFrame(drawPlan); };
   $('planFullscreen').onclick=async()=>{ const frame=$('planFrame'), active=Boolean(document.fullscreenElement||document.webkitFullscreenElement); try { if(active) { const exit=document.exitFullscreen||document.webkitExitFullscreen; await exit?.call(document); } else { const request=frame.requestFullscreen||frame.webkitRequestFullscreen; if(!request) throw new Error('この端末では全画面表示に対応していません。'); await request.call(frame); } } catch(err) { message('planStatus',`全画面表示を開始できませんでした：${err.message}`,'warn'); } };
