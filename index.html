@@ -17,7 +17,7 @@
     .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0; }
     h2 { font-size:17px; margin:0 0 12px; } label { display:block; margin:10px 0 5px; color:var(--sub); font-size:13px; }
     select,input,textarea,button { width:100%; min-height:45px; border-radius:9px; border:1px solid var(--line); padding:9px 11px; background:#111922; color:var(--text); font:inherit; } input[type="checkbox"] { width:auto; min-height:0; padding:0; vertical-align:middle; accent-color:var(--blue); }
-    button { cursor:pointer; background:#1269ae; border-color:#268ed8; font-weight:700; touch-action:manipulation; } button.alt { background:#263545; border-color:#3b5064; } button.danger { background:#62353a; border-color:#a14e58; }
+    button { cursor:pointer; background:#1269ae; border-color:#268ed8; font-weight:700; touch-action:manipulation; } button.alt { background:#263545; border-color:#3b5064; } button.danger { background:#62353a; border-color:#a14e58; } #offsetChoices button { white-space:pre-line; text-align:left; line-height:1.55; }
     button:focus-visible,select:focus-visible,input:focus-visible { outline:3px solid #83c9ff; outline-offset:2px; }
     .grid { display:grid; gap:10px; grid-template-columns:1fr 1fr; } .grid3 { display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr; }
     .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
@@ -399,9 +399,16 @@
       const dx=target.x-base.x, dy=target.y-base.y, len=Math.hypot(dx,dy); if(len<0.01) throw new Error('基準線点と目標点が近すぎて方向を決められません。');
       const warnings=[]; if(len<10) warnings.push(`基準線長 ${len.toFixed(3)} m（10m未満のため方向精度に注意）`);
       offsetTargets={};
+      const guidance = point => {
+        const station=findPoint($('station').value), backsight=findPoint($('backsight').value);
+        if(!zeroReady || !station || !backsight || station.name===backsight.name) return 'TSの方位セット後に距離・右角を表示します';
+        const distance=Math.hypot(point.x-station.x,point.y-station.y);
+        const rightAngle=normalize(bearing(station,point)-bearing(station,backsight));
+        return `水平距離 ${distance.toFixed(3)} m / TS右角 ${dms(rightAngle)}`;
+      };
       if(Number.isFinite(left)&&left>=0) offsetTargets.left={point:{name:`${target.name} 左 ${left.toFixed(3)}m`,x:target.x+dy/len*left,y:target.y-dx/len*left},label:`${target.name}　左 ${left.toFixed(3)} m 離れ`};
       if(Number.isFinite(right)&&right>=0) offsetTargets.right={point:{name:`${target.name} 右 ${right.toFixed(3)}m`,x:target.x-dy/len*right,y:target.y+dx/len*right},label:`${target.name}　右 ${right.toFixed(3)} m 離れ`};
-      const box=$('offsetChoices'); box.innerHTML=''; [['left','左離れ杭'],['right','右離れ杭']].forEach(([side,title])=>{ const stake=offsetTargets[side]; if(!stake) return; const b=document.createElement('button'); b.type='button'; b.className='alt'; b.textContent=`${title}\nX ${stake.point.x.toFixed(3)} / Y ${stake.point.y.toFixed(3)}`; b.onclick=()=>showOffset(side); box.append(b); }); box.classList.remove('hidden');
+      const box=$('offsetChoices'); box.innerHTML=''; [['left','左離れ杭'],['right','右離れ杭']].forEach(([side,title])=>{ const stake=offsetTargets[side]; if(!stake) return; const b=document.createElement('button'); b.type='button'; b.className='alt'; b.textContent=`${title}\nX ${stake.point.x.toFixed(3)} / Y ${stake.point.y.toFixed(3)}\n${guidance(stake.point)}`; b.onclick=()=>showOffset(side); box.append(b); }); box.classList.remove('hidden');
       message('offsetStatus',`基準線 ${base.name} → ${target.name} に対する左右離れ杭を計算しました。${warnings.length?' 注意：'+warnings.join(' / '):''}`,warnings.length?'warn':'ok'); drawPlan();
     } catch(e) { clearOffsets(e.message); $('offsetStatus').className='status warn'; }
   }
