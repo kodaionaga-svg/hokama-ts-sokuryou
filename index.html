@@ -160,6 +160,7 @@
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="field-workflow.js"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -231,6 +232,7 @@
     pdfPage=Math.max(1,Math.min(pdfDocument.numPages,pdfPage));
     const page=await pdfDocument.getPage(pdfPage), canvas=$('pdfPlan'), available=Math.max(280,canvas.getBoundingClientRect().width||360), initial=page.getViewport({scale:1}), scale=Math.min(2.2,Math.max(.5,(available-4)/initial.width)), viewport=page.getViewport({scale}), dpr=window.devicePixelRatio||1;
     canvas.width=Math.round(viewport.width*dpr); canvas.height=Math.round(viewport.height*dpr); canvas.style.height=`${Math.round(viewport.height)}px`; const ctx=canvas.getContext('2d'); await page.render({canvasContext:ctx,viewport,transform:dpr===1?null:[dpr,0,0,dpr,0,0]}).promise;
+    document.dispatchEvent(new CustomEvent('survey-pdf-rendered',{detail:{canvas,page:pdfPage,pages:pdfDocument.numPages}}));
     message('pdfPlanStatus',`PDF 図面：${pdfPage} / ${pdfDocument.numPages} ページ`,'ok'); $('pdfPrev').disabled=pdfPage<=1; $('pdfNext').disabled=pdfPage>=pdfDocument.numPages;
   }
   async function loadPdfPlan() {
@@ -503,4 +505,5 @@
 </script>
 </body>
 </html>
+
 
