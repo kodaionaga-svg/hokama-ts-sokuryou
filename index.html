@@ -134,11 +134,11 @@
 
   <section class="card">
     <h2>8. レベル読値からGL／FL差を計算</h2>
-    <p class="hint">既知点の基準高からの高さと、既知点・目標点のスタッフ読みを入力すると、目標点がGL／FLから何mかを自動計算します。</p>
-    <div class="grid"><div><label>基準<select id="levelDatum"><option value="GL">GL</option><option value="FL">FL</option></select></label><label>既知点のGL／FLからの高さ（m）<input id="levelKnownOffset" inputmode="decimal" placeholder="例：+1.000 または -0.500"></label></div><div><label>既知点のスタッフ読み（m）<input id="levelKnownRead" inputmode="decimal" placeholder="例：1.432"></label><label>目標点のスタッフ読み（m）<input id="levelTargetRead" inputmode="decimal" placeholder="例：0.876"></label></div></div>
-    <button id="calcLevel" type="button">GL／FL差を計算</button>
-    <div class="level-result"><span>目標点のGL／FLからの高さ</span><strong id="levelTargetOffset">—</strong><div class="grid"><div><span>既知点からの高低差</span><strong id="levelHeightDiff">—</strong></div><div><span>スタッフ読値差</span><strong id="levelReadDiff">—</strong></div></div></div>
-    <div id="levelStatus" class="status">既知点のGL／FL差と、既知点・目標点のスタッフ読みを入力してください。</div>
+    <p class="hint">既知点・FLのGLからの高さとスタッフ読みを入力すると、目標点のGL差・FL差を自動計算します。FLからの指定高さ（＋で上げる／−で下げる）を入れると、基準墨を出すための目標スタッフ読みも示します。</p>
+    <div class="grid"><div><label>既知点のGLからの高さ（m）<input id="levelKnownOffset" inputmode="decimal" placeholder="例：+1.000 または -0.500"></label><label>FLのGLからの高さ（m）<input id="levelFlOffset" inputmode="decimal" placeholder="例：+0.150"></label><label>GLからの指定高さ（m・任意）<input id="levelRaiseFromGl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label><label>FLからの指定高さ（m・任意）<input id="levelRaiseFromFl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label></div><div><label>既知点のスタッフ読み（m）<input id="levelKnownRead" inputmode="decimal" placeholder="例：1.432"></label><label>目標点のスタッフ読み（m）<input id="levelTargetRead" inputmode="decimal" placeholder="例：0.876"></label></div></div>
+    <button id="calcLevel" type="button">GL／FL差と目標読値を計算</button>
+    <div class="level-result"><span>目標点のGLからの高さ</span><strong id="levelTargetOffset">—</strong><div class="grid"><div><span>目標点のFLからの高さ</span><strong id="levelTargetFromFl">—</strong></div><div><span>GL指定高さの目標スタッフ読み</span><strong id="levelRequiredReadGl">—</strong></div></div><div class="grid"><div><span>FL指定高さの目標スタッフ読み</span><strong id="levelRequiredReadFl">—</strong></div><div><span>既知点からの高低差</span><strong id="levelHeightDiff">—</strong></div></div><div><span>スタッフ読値差</span><strong id="levelReadDiff">—</strong></div></div>
+    <div id="levelStatus" class="status">既知点のGL差と、既知点・目標点のスタッフ読みを入力してください。</div>
   </section>
 
   <section class="card">
@@ -289,17 +289,35 @@
     message('asBuiltResult',`${ok?'総合判定：OK':'総合判定：要確認'}｜${result('X',xMm,tx)} ／ ${result('Y',yMm,ty)} ／ ${result('H',hMm,th)} ／ 平面差 ${(horizontal*1000).toFixed(1)} mm ／ 勾配 ${grade.toFixed(3)} %`,ok?'ok':'warn');
   }
   function calcLevel() {
-    const knownOffset=num($('levelKnownOffset').value), knownRead=num($('levelKnownRead').value), targetRead=num($('levelTargetRead').value), datum=$('levelDatum').value;
-    $('levelTargetOffset').textContent='—'; $('levelHeightDiff').textContent='—'; $('levelReadDiff').textContent='—';
-    if(![knownOffset,knownRead,targetRead].every(Number.isFinite)) return message('levelStatus','既知点のGL／FL差と、既知点・目標点のスタッフ読みを入力してください。','');
-    if(knownRead<0||targetRead<0) return message('levelStatus','スタッフ読みは0以上で入力してください。','warn');
-    const heightDiff=knownRead-targetRead, targetOffset=knownOffset+heightDiff, signed=value=>(value>=0?'+':'')+value.toFixed(3)+' m';
-    $('levelTargetOffset').textContent=`${datum} ${signed(targetOffset)}`;
-    $('levelHeightDiff').textContent=signed(heightDiff)+(heightDiff>0?'（目標が高い）':heightDiff<0?'（目標が低い）':'（同高）');
-    $('levelReadDiff').textContent=signed(knownRead-targetRead);
-    const warnings=[]; if(knownRead<0.2||knownRead>4) warnings.push(`既知点 ${knownRead.toFixed(3)} m`); if(targetRead<0.2||targetRead>4) warnings.push(`目標点 ${targetRead.toFixed(3)} m`);
-    const text=`既知点 ${datum} ${knownOffset>=0?'+':''}${knownOffset.toFixed(3)} m ＋（既知点読み ${knownRead.toFixed(3)} m − 目標点読み ${targetRead.toFixed(3)} m）= 目標点 ${datum} ${signed(targetOffset)}。`;
-    message('levelStatus',text+(warnings.length?' 注意：スタッフ読み（'+warnings.join(' / ')+'）を確認してください。':''),warnings.length?'warn':'ok');
+    const knownOffset=num($('levelKnownOffset').value), flOffset=num($('levelFlOffset').value), raiseFromGl=num($('levelRaiseFromGl').value), raiseFromFl=num($('levelRaiseFromFl').value), knownRead=num($('levelKnownRead').value), targetRead=num($('levelTargetRead').value), signed=value=>(value>=0?'+':'')+value.toFixed(3)+' m';
+    ['levelTargetOffset','levelTargetFromFl','levelRequiredReadGl','levelRequiredReadFl','levelHeightDiff','levelReadDiff'].forEach(id=>$(id).textContent='—');
+    if(![knownOffset,knownRead].every(Number.isFinite)) return message('levelStatus','既知点のGL差と既知点のスタッフ読みを入力してください。','');
+    if(knownRead<0||(Number.isFinite(targetRead)&&targetRead<0)) return message('levelStatus','スタッフ読みは0以上で入力してください。','warn');
+    const warnings=[]; if(knownRead<0.2||knownRead>4) warnings.push(`既知点 ${knownRead.toFixed(3)} m`);
+    const notes=[];
+    if(Number.isFinite(targetRead)) {
+      const heightDiff=knownRead-targetRead, targetOffset=knownOffset+heightDiff;
+      $('levelTargetOffset').textContent=`GL ${signed(targetOffset)}`;
+      $('levelHeightDiff').textContent=signed(heightDiff)+(heightDiff>0?'（目標が高い）':heightDiff<0?'（目標が低い）':'（同高）');
+      $('levelReadDiff').textContent=signed(knownRead-targetRead);
+      if(Number.isFinite(flOffset)) $('levelTargetFromFl').textContent=`FL ${signed(targetOffset-flOffset)}`;
+      if(targetRead<0.2||targetRead>4) warnings.push(`目標点 ${targetRead.toFixed(3)} m`);
+      notes.push(`目標点 GL ${signed(targetOffset)}${Number.isFinite(flOffset)?` ／ FL ${signed(targetOffset-flOffset)}`:''}`);
+    }
+    if(Number.isFinite(raiseFromGl)) {
+      const requiredRead=knownRead-(raiseFromGl-knownOffset);
+      $('levelRequiredReadGl').textContent=requiredRead.toFixed(3)+' m';
+      notes.push(`GL ${signed(raiseFromGl)} の基準墨は、スタッフを ${requiredRead.toFixed(3)} m に合わせてください`);
+      if(requiredRead<0||requiredRead>5) warnings.push(`GL指示読値 ${requiredRead.toFixed(3)} m`);
+    }
+    if(Number.isFinite(flOffset)&&Number.isFinite(raiseFromFl)) {
+      const requiredRead=knownRead-((flOffset+raiseFromFl)-knownOffset);
+      $('levelRequiredReadFl').textContent=requiredRead.toFixed(3)+' m';
+      notes.push(`FL ${signed(raiseFromFl)} の基準墨は、スタッフを ${requiredRead.toFixed(3)} m に合わせてください`);
+      if(requiredRead<0||requiredRead>5) warnings.push(`FL指示読値 ${requiredRead.toFixed(3)} m`);
+    }
+    if(!notes.length) return message('levelStatus','目標点のスタッフ読み、またはGL／FLからの指定高さを入力してください。','');
+    message('levelStatus',notes.join('。')+'。'+(warnings.length?' 注意：スタッフ読み（'+warnings.join(' / ')+'）を確認してください。':''),warnings.length?'warn':'ok');
   }
   function populateTargets() {
     const q=$('filter').value.trim().toLowerCase(), current=$('target').value;
@@ -507,8 +525,7 @@
   $('pdfNext').onclick=()=>{ if(pdfDocument&&pdfPage<pdfDocument.numPages) { pdfPage++; renderPdfPage(); } };
   $('clearPdfPlan').onclick=async()=>{ if(!currentFieldId) return; if(!confirm('この現場に保存した PDF 図面をこの端末から削除しますか？')) return; try { await removePdfPlan(currentFieldId); $('pdfPlanFile').value=''; pdfDocument=null; clearPdfCanvas(); message('pdfPlanStatus','この現場の PDF 図面を削除しました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF を削除できませんでした：${error.message}`,'warn'); } };
   $('calcLevel').onclick=calcLevel;
-  ['levelKnownOffset','levelKnownRead','levelTargetRead'].forEach(id=>$(id).addEventListener('input',calcLevel));
-  $('levelDatum').addEventListener('change',calcLevel);
+  ['levelKnownOffset','levelFlOffset','levelRaiseFromGl','levelRaiseFromFl','levelKnownRead','levelTargetRead'].forEach(id=>$(id).addEventListener('input',calcLevel));
   $('calcAsBuilt').onclick=calcAsBuilt;
   $('saveObservation').onclick=saveObservation;
   $('obsDate').value=new Date().toISOString().slice(0,10);
