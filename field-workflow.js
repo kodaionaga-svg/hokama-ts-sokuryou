@@ -37,4 +37,3 @@
     document.getElementById('wfCsvOut').onclick=()=>{const csv=['測点,X,Y,H,メモ',...read('observations').map(r=>[r.point,r.x,r.y,r.h,`"${(r.memo||'').replaceAll('"','""')}"`].join(','))].join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));a.download='出来形観測記録.csv';a.click();};document.getElementById('wfPrint').onclick=()=>window.print();
   });
 })();
-
