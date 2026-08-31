@@ -133,13 +133,12 @@
   </section>
 
   <section class="card">
-    <h2>8. レベル読値・標高の自動計算</h2>
-    <p class="hint">既知点の標高、後視（BS）、前視（FS）を入れると、器械高と目標点の標高を自動計算します。前視の確認読値も入力すると、読値差を照合して入力ミスを警告します。</p>
-    <div class="grid"><div><label>既知点名（任意）<input id="levelBmName" placeholder="例：BM-1"></label><label>後視する既知点の標高 H（m）<input id="levelBmH" inputmode="decimal" placeholder="例：12.345"></label><label>後視 BS（m）<input id="levelBacksight" inputmode="decimal" placeholder="例：1.432"></label></div><div><label>目標点名（任意）<input id="levelTargetName" placeholder="例：通り芯A・床端部"></label><label>前視 FS（m）<input id="levelForesight" inputmode="decimal" placeholder="例：0.876"></label><label>前視の確認読値（m・任意）<input id="levelForesightCheck" inputmode="decimal" placeholder="もう一度読んだ値"></label></div></div>
-    <div class="grid3"><label>設計基準<select id="levelDatum"><option value="GL">GL</option><option value="FL">FL</option><option value="other">任意</option></select></label><label>基準高 H（m）<input id="levelDatumH" inputmode="decimal" placeholder="例：10.000"></label><label>設計高さ（mm）<input id="levelOffsetMm" inputmode="decimal" placeholder="例：+150 または -25"></label></div>
-    <div class="grid"><label>読値照合の許容差（mm）<input id="levelReadTolerance" inputmode="decimal" value="5"></label><div><label>&nbsp;</label><button id="calcLevel" type="button">レベル標高を計算して実測Hへ反映</button></div></div>
-    <div class="level-result"><span>器械高 HI</span><strong id="levelHi">—</strong><div class="grid3"><div><span>設計標高 H</span><strong id="levelDesignH">—</strong></div><div><span>目標点の実測標高 H</span><strong id="levelTargetH">—</strong></div><div><span>設計との差</span><strong id="levelDesignDiff">—</strong></div></div><div class="grid"><div><span>確認読値との差</span><strong id="levelCheckDiff">—</strong></div><div><span>設計基準からの高さ</span><strong id="levelOffsetLabel">—</strong></div></div></div>
-    <div id="levelStatus" class="status">既知点標高・後視・前視を入力してください。前視を確認読値と照合してから実測 H に反映します。</div>
+    <h2>8. レベル読値からGL／FL差を計算</h2>
+    <p class="hint">既知点の基準高からの高さと、既知点・目標点のスタッフ読みを入力すると、目標点がGL／FLから何mmかを自動計算します。</p>
+    <div class="grid"><div><label>基準<select id="levelDatum"><option value="GL">GL</option><option value="FL">FL</option></select></label><label>既知点のGL／FLからの高さ（mm）<input id="levelKnownOffset" inputmode="decimal" placeholder="例：+1000 または -500"></label></div><div><label>既知点のスタッフ読み（m）<input id="levelKnownRead" inputmode="decimal" placeholder="例：1.432"></label><label>目標点のスタッフ読み（m）<input id="levelTargetRead" inputmode="decimal" placeholder="例：0.876"></label></div></div>
+    <button id="calcLevel" type="button">GL／FL差を計算</button>
+    <div class="level-result"><span>目標点のGL／FLからの高さ</span><strong id="levelTargetOffset">—</strong><div class="grid"><div><span>既知点からの高低差</span><strong id="levelHeightDiff">—</strong></div><div><span>スタッフ読値差</span><strong id="levelReadDiff">—</strong></div></div></div>
+    <div id="levelStatus" class="status">既知点のGL／FL差と、既知点・目標点のスタッフ読みを入力してください。</div>
   </section>
 
   <section class="card">
@@ -289,30 +288,18 @@
     const ok=Math.abs(xMm)<=tx && Math.abs(yMm)<=ty && Math.abs(hMm)<=th;
     message('asBuiltResult',`${ok?'総合判定：OK':'総合判定：要確認'}｜${result('X',xMm,tx)} ／ ${result('Y',yMm,ty)} ／ ${result('H',hMm,th)} ／ 平面差 ${(horizontal*1000).toFixed(1)} mm ／ 勾配 ${grade.toFixed(3)} %`,ok?'ok':'warn');
   }
-  function calcLevel(reflect=true) {
-    const bm=num($('levelBmH').value), bs=num($('levelBacksight').value), fs=num($('levelForesight').value), check=num($('levelForesightCheck').value), tolerance=num($('levelReadTolerance').value), datumH=num($('levelDatumH').value), offsetMm=num($('levelOffsetMm').value);
-    $('levelHi').textContent='—'; $('levelDesignH').textContent='—'; $('levelTargetH').textContent='—'; $('levelDesignDiff').textContent='—'; $('levelCheckDiff').textContent='—'; $('levelOffsetLabel').textContent='—';
-    if(![bm,bs,fs].every(Number.isFinite)) return message('levelStatus','既知点標高・後視・前視を入力してください。','');
-    if([bs,fs].some(value=>value<0)||!Number.isFinite(tolerance)||tolerance<0) return message('levelStatus','後視・前視は0以上、読値照合の許容差は0以上で入力してください。','warn');
-    const hi=bm+bs, targetH=hi-fs, warnings=[], hasDesign=Number.isFinite(datumH)&&Number.isFinite(offsetMm), designH=hasDesign?datumH+offsetMm/1000:NaN, datumName=$('levelDatum').value;
-    if(bs<0.2||bs>4) warnings.push(`後視 ${bs.toFixed(3)} m`);
-    if(fs<0.2||fs>4) warnings.push(`前視 ${fs.toFixed(3)} m`);
-    let checkOk=true, checkText='確認読値なし';
-    if(Number.isFinite(check)) {
-      if(check<0) return message('levelStatus','前視の確認読値は0以上で入力してください。','warn');
-      const diff=Math.abs(fs-check)*1000; checkOk=diff<=tolerance; checkText=`${diff.toFixed(1)} mm`;
-      $('levelCheckDiff').textContent=checkText+(checkOk?'（一致）':'（要確認）');
-      if(!checkOk) warnings.push(`前視の確認差 ${checkText}`);
-    } else $('levelCheckDiff').textContent=checkText;
-    $('levelHi').textContent=hi.toFixed(3)+' m'; $('levelTargetH').textContent=targetH.toFixed(3)+' m';
-    if(hasDesign) { const designDiff=(targetH-designH)*1000; $('levelDesignH').textContent=designH.toFixed(3)+' m'; $('levelDesignDiff').textContent=(designDiff>=0?'+':'')+designDiff.toFixed(1)+' mm'; $('levelOffsetLabel').textContent=`${datumName} ${offsetMm>=0?'+':''}${offsetMm.toFixed(0)} mm`; }
-    if(reflect&&checkOk) $('actualH').value=targetH.toFixed(3);
-    const targetName=$('levelTargetName').value.trim(), bmName=$('levelBmName').value.trim();
-    const designLabel=hasDesign?` 設計：${datumName} H ${datumH.toFixed(3)} m ${offsetMm>=0?'+':''}${offsetMm.toFixed(0)} mm = ${designH.toFixed(3)} m、実測差 ${(targetH-designH)>=0?'+':''}${((targetH-designH)*1000).toFixed(1)} mm。`:'';
-    const label=`${bmName?bmName+'（':''}${bm.toFixed(3)} m${bmName?'）':''} + BS ${bs.toFixed(3)} m = HI ${hi.toFixed(3)} m − FS ${fs.toFixed(3)} m = ${targetName?targetName+' ':''}H ${targetH.toFixed(3)} m。${designLabel}`;
-    if(!checkOk) return message('levelStatus',label+' 前視と確認読値が許容差を超えています。再読してから実測Hへ反映してください。','warn');
-    if(warnings.length) return message('levelStatus',label+' 注意：'+warnings.join(' / ')+'。目盛・スタッフの読取りを確認してください。', 'warn');
-    message('levelStatus',label+(reflect?' 実測 H に反映しました。':''),'ok');
+  function calcLevel() {
+    const knownOffset=num($('levelKnownOffset').value), knownRead=num($('levelKnownRead').value), targetRead=num($('levelTargetRead').value), datum=$('levelDatum').value;
+    $('levelTargetOffset').textContent='—'; $('levelHeightDiff').textContent='—'; $('levelReadDiff').textContent='—';
+    if(![knownOffset,knownRead,targetRead].every(Number.isFinite)) return message('levelStatus','既知点のGL／FL差と、既知点・目標点のスタッフ読みを入力してください。','');
+    if(knownRead<0||targetRead<0) return message('levelStatus','スタッフ読みは0以上で入力してください。','warn');
+    const heightDiff=(knownRead-targetRead)*1000, targetOffset=knownOffset+heightDiff, signed=value=>(value>=0?'+':'')+value.toFixed(1)+' mm';
+    $('levelTargetOffset').textContent=`${datum} ${signed(targetOffset)}`;
+    $('levelHeightDiff').textContent=signed(heightDiff)+(heightDiff>0?'（目標が高い）':heightDiff<0?'（目標が低い）':'（同高）');
+    $('levelReadDiff').textContent=signed((knownRead-targetRead)*1000);
+    const warnings=[]; if(knownRead<0.2||knownRead>4) warnings.push(`既知点 ${knownRead.toFixed(3)} m`); if(targetRead<0.2||targetRead>4) warnings.push(`目標点 ${targetRead.toFixed(3)} m`);
+    const text=`既知点 ${datum} ${signed(knownOffset)} ＋（既知点読み ${knownRead.toFixed(3)} m − 目標点読み ${targetRead.toFixed(3)} m）= 目標点 ${datum} ${signed(targetOffset)}。`;
+    message('levelStatus',text+(warnings.length?' 注意：スタッフ読み（'+warnings.join(' / ')+'）を確認してください。':''),warnings.length?'warn':'ok');
   }
   function populateTargets() {
     const q=$('filter').value.trim().toLowerCase(), current=$('target').value;
@@ -519,9 +506,9 @@
   $('pdfPrev').onclick=()=>{ if(pdfDocument&&pdfPage>1) { pdfPage--; renderPdfPage(); } };
   $('pdfNext').onclick=()=>{ if(pdfDocument&&pdfPage<pdfDocument.numPages) { pdfPage++; renderPdfPage(); } };
   $('clearPdfPlan').onclick=async()=>{ if(!currentFieldId) return; if(!confirm('この現場に保存した PDF 図面をこの端末から削除しますか？')) return; try { await removePdfPlan(currentFieldId); $('pdfPlanFile').value=''; pdfDocument=null; clearPdfCanvas(); message('pdfPlanStatus','この現場の PDF 図面を削除しました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF を削除できませんでした：${error.message}`,'warn'); } };
-  $('calcLevel').onclick=()=>calcLevel(true);
-  ['levelBmH','levelBacksight','levelForesight','levelForesightCheck','levelReadTolerance','levelDatum','levelDatumH','levelOffsetMm','levelBmName','levelTargetName'].forEach(id=>$(id).addEventListener('input',()=>calcLevel(false)));
-  $('levelDatum').addEventListener('change',()=>calcLevel(false));
+  $('calcLevel').onclick=calcLevel;
+  ['levelKnownOffset','levelKnownRead','levelTargetRead'].forEach(id=>$(id).addEventListener('input',calcLevel));
+  $('levelDatum').addEventListener('change',calcLevel);
   $('calcAsBuilt').onclick=calcAsBuilt;
   $('saveObservation').onclick=saveObservation;
   $('obsDate').value=new Date().toISOString().slice(0,10);
