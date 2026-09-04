@@ -108,7 +108,7 @@
     <h2>6. PDF 図面</h2>
     <p class="hint">この現場の PDF 図面を登録して確認できます。図面はこの端末・ブラウザ内に現場ごとに保存されます（他の端末とは共有されません）。</p>
     <input id="pdfPlanFile" type="file" accept="application/pdf,.pdf">
-    <div id="pdfFrame" class="pdfframe"><div id="pdfViewport" class="pdfviewport"><canvas id="pdfPlan" class="pdfcanvas" role="img" aria-label="PDF図面のプレビュー"></canvas></div><div class="pdfcontrols"><button id="pdfPrev" class="alt" type="button">← 前ページ</button><button id="pdfNext" class="alt" type="button">次ページ →</button><button id="pdfDownload" class="alt" type="button">↓ PDFを保存</button><button id="pdfZoomOut" class="alt" type="button">− 縮小</button><button id="pdfZoomIn" type="button">＋ 拡大</button><button id="pdfReset" class="alt" type="button">表示を戻す</button><button id="pdfRotateLeft" class="alt" type="button">↺ 左へ90°</button><button id="pdfRotateRight" class="alt" type="button">↻ 右へ90°</button><button id="pdfFullscreen" class="alt" type="button">全画面表示</button><button id="clearPdfPlan" class="danger wide" type="button">この図面を削除</button></div><p id="pdfPlanStatus" class="status">PDF 図面を選択してください。</p></div>
+    <div id="pdfFrame" class="pdfframe"><div id="pdfViewport" class="pdfviewport"><canvas id="pdfPlan" class="pdfcanvas" role="img" aria-label="PDF図面のプレビュー"></canvas></div><div class="pdfcontrols"><button id="pdfPrev" class="alt" type="button">← 前ページ</button><button id="pdfNext" class="alt" type="button">次ページ →</button><button id="pdfDownload" class="alt" type="button">↓ PDFを保存</button><button id="pdfZoomOut" class="alt" type="button">− 縮小</button><button id="pdfZoomIn" type="button">＋ 拡大</button><button id="pdfReset" class="alt" type="button">表示を戻す</button><button id="pdfRotateLeft" class="alt" type="button">↺ 左へ15°</button><button id="pdfRotateRight" class="alt" type="button">↻ 右へ15°</button><button id="pdfFullscreen" class="alt" type="button">全画面表示</button><button id="clearPdfPlan" class="danger wide" type="button">この図面を削除</button></div><p id="pdfPlanStatus" class="status">PDF 図面を選択してください。</p></div>
   </section>
 
   <section class="card">
@@ -240,13 +240,15 @@
   function updatePdfView() { const canvas=$('pdfPlan'); canvas.style.transform=`translate(${pdfPanX}px,${pdfPanY}px) scale(${pdfScale}) rotate(${pdfRotation}deg)`; }
   function resetPdfView() { pdfScale=1; pdfPanX=0; pdfPanY=0; updatePdfView(); }
   function clearPdfCanvas(text='PDF 図面を選択してください。') { const canvas=$('pdfPlan'), ctx=canvas.getContext('2d'), width=Math.max(280,Math.round($('pdfViewport').getBoundingClientRect().width||360)); canvas.width=width; canvas.height=220; canvas.style.height='220px'; pdfRotation=0; resetPdfView(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,220); ctx.fillStyle='#64748b'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText(text,width/2,110); }
-  async function renderPdfPage() {
+  async function renderPdfPage(resetView=true) {
     if(!pdfDocument) return clearPdfCanvas();
     pdfPage=Math.max(1,Math.min(pdfDocument.numPages,pdfPage));
-    const page=await pdfDocument.getPage(pdfPage), canvas=$('pdfPlan'), available=Math.max(280,$('pdfViewport').getBoundingClientRect().width||360), initial=page.getViewport({scale:1}); pdfRotation=initial.height>initial.width?90:0; const rotatedWidth=pdfRotation?initial.height:initial.width, scale=Math.min(2.2,Math.max(.5,(available-4)/rotatedWidth)), viewport=page.getViewport({scale}), dpr=window.devicePixelRatio||1;
-    canvas.width=Math.round(viewport.width*dpr); canvas.height=Math.round(viewport.height*dpr); canvas.style.height=`${Math.round(viewport.height)}px`; resetPdfView(); const ctx=canvas.getContext('2d'); await page.render({canvasContext:ctx,viewport,transform:dpr===1?null:[dpr,0,0,dpr,0,0]}).promise;
+    const page=await pdfDocument.getPage(pdfPage), canvas=$('pdfPlan'), available=Math.max(280,$('pdfViewport').getBoundingClientRect().width||360), initial=page.getViewport({scale:1});
+    if(resetView) { pdfRotation=initial.height>initial.width?90:0; resetPdfView(); }
+    const rotatedWidth=(pdfRotation%180)?initial.height:initial.width, displayScale=Math.min(2.2,Math.max(.5,(available-4)/rotatedWidth)), displayWidth=initial.width*displayScale, displayHeight=initial.height*displayScale, maxPixels=24000000, requestedQuality=Math.min(6,Math.max(2,(window.devicePixelRatio||1)*2*pdfScale)), quality=Math.min(requestedQuality,Math.sqrt(maxPixels/Math.max(1,displayWidth*displayHeight))), viewport=page.getViewport({scale:displayScale*quality});
+    canvas.width=Math.round(viewport.width); canvas.height=Math.round(viewport.height); canvas.style.width=`${Math.round(displayWidth)}px`; canvas.style.height=`${Math.round(displayHeight)}px`; const ctx=canvas.getContext('2d'); await page.render({canvasContext:ctx,viewport}).promise; updatePdfView();
     document.dispatchEvent(new CustomEvent('survey-pdf-rendered',{detail:{canvas,page:pdfPage,pages:pdfDocument.numPages}}));
-    message('pdfPlanStatus',`PDF 図面：${pdfPage} / ${pdfDocument.numPages} ページ`,'ok'); $('pdfPrev').disabled=pdfPage<=1; $('pdfNext').disabled=pdfPage>=pdfDocument.numPages;
+    message('pdfPlanStatus',`PDF 図面：${pdfPage} / ${pdfDocument.numPages} ページ｜倍率 ${Math.round(pdfScale*100)}%・回転 ${pdfRotation}°`,'ok'); $('pdfPrev').disabled=pdfPage<=1; $('pdfNext').disabled=pdfPage>=pdfDocument.numPages;
   }
   async function loadPdfPlan() {
     pdfDocument=null; pdfRecord=null; pdfPage=1; clearPdfCanvas('PDF 図面を読み込み中…');
@@ -532,7 +534,7 @@
   const beginPdfPinch=()=>{ const [a,b]=pdfPointerPair(); if(!a||!b)return; pdfPinch={distance:Math.hypot(b.x-a.x,b.y-a.y),centerX:(a.x+b.x)/2,centerY:(a.y+b.y)/2,scale:pdfScale,panX:pdfPanX,panY:pdfPanY}; pdfDrag=null; };
   pdfCanvas.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse'&&e.button!==0)return; pdfPointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); pdfCanvas.setPointerCapture?.(e.pointerId); if(pdfPointers.size===2)beginPdfPinch(); else pdfDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:pdfPanX,panY:pdfPanY}; pdfCanvas.classList.add('dragging'); });
   pdfCanvas.addEventListener('pointermove',e=>{ if(!pdfPointers.has(e.pointerId))return; pdfPointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pdfPointers.size>=2&&pdfPinch){const [a,b]=pdfPointerPair(),distance=Math.hypot(b.x-a.x,b.y-a.y),centerX=(a.x+b.x)/2,centerY=(a.y+b.y)/2;pdfScale=Math.min(16,Math.max(.5,pdfPinch.scale*(distance/Math.max(1,pdfPinch.distance))));pdfPanX=pdfPinch.panX+centerX-pdfPinch.centerX;pdfPanY=pdfPinch.panY+centerY-pdfPinch.centerY;updatePdfView();return;}if(pdfDrag&&e.pointerId===pdfDrag.id){pdfPanX=pdfDrag.panX+e.clientX-pdfDrag.x;pdfPanY=pdfDrag.panY+e.clientY-pdfDrag.y;updatePdfView();} });
-  const endPdfDrag=e=>{if(!pdfPointers.has(e.pointerId))return;pdfCanvas.releasePointerCapture?.(e.pointerId);pdfPointers.delete(e.pointerId);if(pdfPointers.size===1){const [p]=pdfPointerPair();pdfDrag={id:Array.from(pdfPointers.keys())[0],x:p.x,y:p.y,panX:pdfPanX,panY:pdfPanY};}else if(!pdfPointers.size){pdfDrag=null;pdfCanvas.classList.remove('dragging');}pdfPinch=null;};
+  const endPdfDrag=e=>{if(!pdfPointers.has(e.pointerId))return;pdfCanvas.releasePointerCapture?.(e.pointerId);pdfPointers.delete(e.pointerId);if(pdfPointers.size===1){const [p]=pdfPointerPair();pdfDrag={id:Array.from(pdfPointers.keys())[0],x:p.x,y:p.y,panX:pdfPanX,panY:pdfPanY};}else if(!pdfPointers.size){pdfDrag=null;pdfCanvas.classList.remove('dragging');if(pdfDocument&&pdfScale>1)renderPdfPage(false);}pdfPinch=null;};
   pdfCanvas.addEventListener('pointerup',endPdfDrag);pdfCanvas.addEventListener('pointercancel',endPdfDrag);
   const updatePdfFullscreen=()=>{$('pdfFullscreen').textContent=(document.fullscreenElement===$('pdfFrame')||document.webkitFullscreenElement===$('pdfFrame'))?'全画面を閉じる':'全画面表示';requestAnimationFrame(renderPdfPage);};
   $('pdfFullscreen').onclick=async()=>{const frame=$('pdfFrame'),active=document.fullscreenElement===frame||document.webkitFullscreenElement===frame;try{if(active){const exit=document.exitFullscreen||document.webkitExitFullscreen;await exit?.call(document);}else{const request=frame.requestFullscreen||frame.webkitRequestFullscreen;if(!request)throw new Error('この端末では全画面表示に対応していません。');await request.call(frame);}}catch(error){message('pdfPlanStatus',`全画面表示を開始できませんでした：${error.message}`,'warn');}};
@@ -542,11 +544,11 @@
   $('pdfPrev').onclick=()=>{ if(pdfDocument&&pdfPage>1) { pdfPage--; renderPdfPage(); } };
   $('pdfNext').onclick=()=>{ if(pdfDocument&&pdfPage<pdfDocument.numPages) { pdfPage++; renderPdfPage(); } };
   $('pdfDownload').onclick=downloadPdfPlan;
-  $('pdfZoomOut').onclick=()=>{pdfScale=Math.max(.5,pdfScale/1.5);updatePdfView();};
-  $('pdfZoomIn').onclick=()=>{pdfScale=Math.min(16,pdfScale*1.5);updatePdfView();};
-  $('pdfReset').onclick=resetPdfView;
-  $('pdfRotateLeft').onclick=()=>{pdfRotation=(pdfRotation-90+360)%360;pdfPanX=0;pdfPanY=0;updatePdfView();};
-  $('pdfRotateRight').onclick=()=>{pdfRotation=(pdfRotation+90)%360;pdfPanX=0;pdfPanY=0;updatePdfView();};
+  $('pdfZoomOut').onclick=()=>{pdfScale=Math.max(.5,pdfScale/1.5);updatePdfView();renderPdfPage(false);};
+  $('pdfZoomIn').onclick=()=>{pdfScale=Math.min(16,pdfScale*1.5);updatePdfView();renderPdfPage(false);};
+  $('pdfReset').onclick=()=>{resetPdfView();renderPdfPage(false);};
+  $('pdfRotateLeft').onclick=()=>{pdfRotation=(pdfRotation-15+360)%360;pdfPanX=0;pdfPanY=0;updatePdfView();renderPdfPage(false);};
+  $('pdfRotateRight').onclick=()=>{pdfRotation=(pdfRotation+15)%360;pdfPanX=0;pdfPanY=0;updatePdfView();renderPdfPage(false);};
   $('clearPdfPlan').onclick=async()=>{ if(!currentFieldId) return; if(!confirm('この現場に保存した PDF 図面をこの端末から削除しますか？')) return; try { await removePdfPlan(currentFieldId); $('pdfPlanFile').value=''; pdfDocument=null; clearPdfCanvas(); message('pdfPlanStatus','この現場の PDF 図面を削除しました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF を削除できませんでした：${error.message}`,'warn'); } };
   $('calcLevel').onclick=calcLevel;
   ['levelKnownOffset','levelFlOffset','levelRaiseFromGl','levelRaiseFromFl','levelKnownRead','levelTargetRead'].forEach(id=>$(id).addEventListener('input',calcLevel));
