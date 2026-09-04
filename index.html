@@ -28,7 +28,7 @@
     .hint { font-size:13px; color:var(--sub); margin:12px 0 0; } .hidden { display:none; }
     .plan { display:block; width:100%; aspect-ratio:1.35; min-height:250px; margin-top:10px; border:1px solid var(--line); border-radius:10px; background:#111922; touch-action:none; cursor:grab; } .plan.dragging { cursor:grabbing; } .plancontrols { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; } .plancontrols button { min-height:42px; } .plancontrols .wide { grid-column:1 / -1; } .planlegend { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--sub); font-size:12px; } .planlegend span { display:flex; align-items:center; gap:4px; } .legendmark { width:10px; height:10px; display:inline-block; border-radius:50%; } .legendmark.station { background:#31a7ff; } .legendmark.back { background:#31d49b; } .legendmark.target { background:#ffca58; } .legendmark.left { background:#d48cff; } .legendmark.right { background:#ff8a58; } .planframe:fullscreen, .planframe:-webkit-full-screen { display:grid; grid-template-rows:minmax(0,1fr) auto auto auto; gap:8px; box-sizing:border-box; width:100vw; height:100vh; padding:12px; background:var(--bg); } .planframe:fullscreen .plan, .planframe:-webkit-full-screen .plan { width:100%; height:100%; min-height:0; margin:0; aspect-ratio:auto; border-radius:8px; }
     .runbar { display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:8px; margin-top:14px; } .runbar button { min-height:52px; }
-    .quality { display:inline-block; border-radius:999px; padding:3px 9px; font-size:12px; font-weight:800; background:#203344; color:#bfe4ff; }
+    .quality { display:inline-block; border-radius:999px; padding:3px 9px; font-size:12px; font-weight:800; background:#203344; color:#bfe4ff; } .level-presets { display:flex; flex-wrap:wrap; gap:7px; margin:8px 0 4px; } .level-presets span { width:100%; color:var(--sub); font-size:12px; } .level-presets button { width:auto; min-height:36px; padding:6px 10px; font-size:13px; }
     details summary { cursor:pointer; color:var(--sub); } table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; } th,td { padding:6px; border-bottom:1px solid var(--line); text-align:left; } .level-result { margin-top:12px; padding:13px; border-radius:10px; background:#0d1c29; border:1px solid #268ed8; } .level-result strong { display:block; margin-top:2px; font-size:25px; color:#88d4ff; } .level-result .grid { margin-top:8px; } .pdfviewport { display:grid; place-items:center; min-height:220px; margin-top:10px; overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#fff; touch-action:none; } .pdfcanvas { display:block; max-width:100%; min-height:0; background:#fff; cursor:grab; transform-origin:center center; will-change:transform; } .pdfcanvas.dragging { cursor:grabbing; } .pdfcontrols { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; } .pdfcontrols button { min-height:42px; } .pdfcontrols .wide { grid-column:1 / -1; } .pdfframe:fullscreen, .pdfframe:-webkit-full-screen { display:grid; grid-template-rows:minmax(0,1fr) auto auto; gap:8px; box-sizing:border-box; width:100vw; height:100vh; padding:12px; background:#fff; color:#1e293b; } .pdfframe:fullscreen .pdfviewport, .pdfframe:-webkit-full-screen .pdfviewport { min-height:0; margin:0; border-color:#cbd5e1; }
     @media (max-width:430px) { main { padding:12px 12px 34px; } .measure strong { font-size:34px; } .grid3 { grid-template-columns:1fr; } }
   </style>
@@ -106,7 +106,7 @@
 
   <section class="card">
     <h2>6. PDF 図面</h2>
-    <p class="hint">この現場の PDF 図面を登録して確認できます。図面はこの端末・ブラウザ内に現場ごとに保存されます（他の端末とは共有されません）。</p>
+    <p class="hint">この現場の PDF 図面をクラウドに登録して、同じ現場を開く全員で共有できます。登録・差替え・削除は他の端末にも反映されます。</p>
     <input id="pdfPlanFile" type="file" accept="application/pdf,.pdf">
     <div id="pdfFrame" class="pdfframe"><div id="pdfViewport" class="pdfviewport"><canvas id="pdfPlan" class="pdfcanvas" role="img" aria-label="PDF図面のプレビュー"></canvas></div><div class="pdfcontrols"><button id="pdfPrev" class="alt" type="button">← 前ページ</button><button id="pdfNext" class="alt" type="button">次ページ →</button><button id="pdfDownload" class="alt" type="button">↓ PDFを保存</button><button id="pdfZoomOut" class="alt" type="button">− 縮小</button><button id="pdfZoomIn" type="button">＋ 拡大</button><button id="pdfReset" class="alt" type="button">表示を戻す</button><button id="pdfRotateLeft" class="alt" type="button">↺ 左へ15°</button><button id="pdfRotateRight" class="alt" type="button">↻ 右へ15°</button><button id="pdfFullscreen" class="alt" type="button">全画面表示</button><button id="clearPdfPlan" class="danger wide" type="button">この図面を削除</button></div><p id="pdfPlanStatus" class="status">PDF 図面を選択してください。</p></div>
   </section>
@@ -133,7 +133,7 @@
   <section class="card">
     <h2>8. レベル読値からGL／FL差を計算</h2>
     <p class="hint">既知点・FLのGLからの高さとスタッフ読みを入力すると、目標点のGL差・FL差を自動計算します。FLからの指定高さ（＋で上げる／−で下げる）を入れると、基準墨を出すための目標スタッフ読みも示します。</p>
-    <div class="grid"><div><label>既知点のGLからの高さ（m）<input id="levelKnownOffset" inputmode="decimal" placeholder="例：+1.000 または -0.500"></label><label>FLのGLからの高さ（m）<input id="levelFlOffset" inputmode="decimal" placeholder="例：+0.150"></label><label>GLからの指定高さ（m・任意）<input id="levelRaiseFromGl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label><label>FLからの指定高さ（m・任意）<input id="levelRaiseFromFl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label></div><div><label>既知点のスタッフ読み（m）<input id="levelKnownRead" inputmode="decimal" placeholder="例：1.432"></label><label>目標点のスタッフ読み（m）<input id="levelTargetRead" inputmode="decimal" placeholder="例：0.876"></label></div></div>
+    <div class="grid"><div><label>既知点のGLからの高さ（m）<input id="levelKnownOffset" inputmode="decimal" placeholder="例：+1.000 または -0.500"></label><label>FLのGLからの高さ（m）<input id="levelFlOffset" inputmode="decimal" placeholder="例：+0.150"></label><label>GLからの指定高さ（m・任意）<input id="levelRaiseFromGl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label><label>FLからの指定高さ（m・任意）<input id="levelRaiseFromFl" inputmode="decimal" placeholder="例：+1.000 または -0.050"></label></div><div><label>既知点のスタッフ読み（m）<input id="levelKnownRead" inputmode="decimal" placeholder="例：1.432"></label><label>目標点のスタッフ読み（m）<input id="levelTargetRead" inputmode="decimal" placeholder="例：0.876"></label><div class="level-presets" aria-label="ワンタップ呼び出し"><span>ワンタップ呼び出し（指定高さ）</span><button class="alt" type="button" data-level-preset="levelRaiseFromGl:0">GL ±0.000</button><button class="alt" type="button" data-level-preset="levelRaiseFromGl:1">GL +1.000</button><button class="alt" type="button" data-level-preset="levelRaiseFromGl:-1">GL −1.000</button><button class="alt" type="button" data-level-preset="levelRaiseFromFl:0">FL ±0.000</button><button class="alt" type="button" data-level-preset="levelRaiseFromFl:1">FL +1.000</button><button class="alt" type="button" data-level-preset="levelRaiseFromFl:-1">FL −1.000</button></div></div></div>
     <button id="calcLevel" type="button">GL／FL差と目標読値を計算</button>
     <div class="level-result"><span>目標点のGLからの高さ</span><strong id="levelTargetOffset">—</strong><div class="grid"><div><span>目標点のFLからの高さ</span><strong id="levelTargetFromFl">—</strong></div><div><span>GL指定高さの目標スタッフ読み</span><strong id="levelRequiredReadGl">—</strong></div></div><div class="grid"><div><span>FL指定高さの目標スタッフ読み</span><strong id="levelRequiredReadFl">—</strong></div><div><span>既知点からの高低差</span><strong id="levelHeightDiff">—</strong></div></div><div><span>スタッフ読値差</span><strong id="levelReadDiff">—</strong></div></div>
     <div id="levelStatus" class="status">既知点のGL差と、既知点・目標点のスタッフ読みを入力してください。</div>
@@ -196,12 +196,9 @@
   let pdfScale = 1, pdfPanX = 0, pdfPanY = 0, pdfRotation = 0, pdfDrag = null;
   const pdfPointers = new Map();
   let pdfPinch = null;
+  const PDF_BUCKET='survey-pdf-plans';
+  let pdfSubscription=null;
   if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const planStore = new Promise((resolve,reject) => { const request=indexedDB.open('ts-sokuryou-plans',1); request.onupgradeneeded=()=>request.result.createObjectStore('plans'); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); });
-  const withPlanStore = async (mode, action) => { const database=await planStore; return new Promise((resolve,reject)=>{ const transaction=database.transaction('plans',mode), request=action(transaction.objectStore('plans')); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); }); };
-  const getPdfPlan = id => withPlanStore('readonly', store=>store.get(id));
-  const savePdfPlan = (id, value) => withPlanStore('readwrite', store=>store.put(value,id));
-  const removePdfPlan = id => withPlanStore('readwrite', store=>store.delete(id));
 
   let fields = [];
   let currentFieldId = '';
@@ -224,7 +221,7 @@
     if (result.error) return message('fieldStatus', `現場データを読み込めませんでした：${result.error.message}`, 'warn');
     points=result.data||[];
     resectionStation=null; offsetTargets={}; planScale=1; planRotation=0; planPanX=0; planPanY=0;
-    renderFields(); populate(); resetSetup(); clearOffsets(); loadObservations(); loadPdfPlan();
+    renderFields(); populate(); resetSetup(); clearOffsets(); loadObservations(); subscribePdfChanges(); loadPdfPlan();
     const field=fields.find(item=>item.id===id);
     message('fieldStatus',`「${field?.name || '現場'}」のデータを表示中です。登録点 ${points.length} 点。`, 'ok');
   }
@@ -253,20 +250,21 @@
   async function loadPdfPlan() {
     pdfDocument=null; pdfRecord=null; pdfPage=1; clearPdfCanvas('PDF 図面を読み込み中…');
     if(!currentFieldId) return clearPdfCanvas();
-    try { const record=await getPdfPlan(currentFieldId); if(!record) return clearPdfCanvas(); if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const bytes=await record.file.arrayBuffer(); pdfDocument=await pdfjsLib.getDocument({data:bytes}).promise; await renderPdfPage(); }
+    try { const result=await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle(); if(result.error) throw result.error; const record=result.data; if(!record) { clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); return message('pdfPlanStatus','PDF 図面を選択して、現場メンバー全員へ共有できます。',''); } if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const publicUrl=db.storage.from(PDF_BUCKET).getPublicUrl(record.storage_path).data.publicUrl; const response=await fetch(`${publicUrl}?v=${encodeURIComponent(record.updated_at)}`); if(!response.ok) throw new Error(`PDF の取得に失敗しました（${response.status}）`); const bytes=await response.arrayBuffer(); pdfDocument=await pdfjsLib.getDocument({data:bytes}).promise; await renderPdfPage(); }
     catch(error) { clearPdfCanvas('PDF 図面を表示できませんでした。'); message('pdfPlanStatus',`PDF を読み込めませんでした：${error.message}`,'warn'); }
   }
   async function importPdfPlan(file) {
     if(!currentFieldId || !file) return;
     if(file.type!=='application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) return message('pdfPlanStatus','PDF ファイルを選択してください。','warn');
     if(file.size>40*1024*1024) return message('pdfPlanStatus','PDF は 40MB 以下にしてください。','warn');
-    try { await savePdfPlan(currentFieldId,{file,name:file.name,savedAt:new Date().toISOString()}); await loadPdfPlan(); message('pdfPlanStatus',`「${file.name}」をこの現場に保存しました。`,'ok'); }
+    try { message('pdfPlanStatus','PDF 図面をクラウドへアップロード中…',''); const current=await db.from('survey_pdf_plans').select('storage_path').eq('project_id',currentFieldId).maybeSingle(); if(current.error) throw current.error; const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const storagePath=`${currentFieldId}/${Date.now()}_${safeName}`; const upload=await db.storage.from(PDF_BUCKET).upload(storagePath,file,{contentType:'application/pdf',upsert:false}); if(upload.error) throw upload.error; const saved=await db.from('survey_pdf_plans').upsert({project_id:currentFieldId,storage_path:upload.data.path,file_name:file.name,file_size:file.size,updated_at:new Date().toISOString()},{onConflict:'project_id'}); if(saved.error) { await db.storage.from(PDF_BUCKET).remove([upload.data.path]); throw saved.error; } if(current.data?.storage_path) await db.storage.from(PDF_BUCKET).remove([current.data.storage_path]); await loadPdfPlan(); message('pdfPlanStatus',`「${file.name}」をクラウドへ保存し、この現場の全員へ共有しました。`,'ok'); }
     catch(error) { message('pdfPlanStatus',`PDF を保存できませんでした：${error.message}`,'warn'); }
   }
-  function downloadPdfPlan() {
-    if(!pdfRecord?.file) return message('pdfPlanStatus','保存するPDF図面がありません。','warn');
-    const url=URL.createObjectURL(pdfRecord.file), link=document.createElement('a'); link.href=url; link.download=pdfRecord.name||'図面.pdf'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); message('pdfPlanStatus','PDF図面をダウンロードしました。','ok');
+  async function downloadPdfPlan() {
+    if(!pdfRecord?.storage_path) return message('pdfPlanStatus','保存するPDF図面がありません。','warn');
+    try { const response=await fetch(db.storage.from(PDF_BUCKET).getPublicUrl(pdfRecord.storage_path).data.publicUrl); if(!response.ok) throw new Error(`取得に失敗しました（${response.status}）`); const url=URL.createObjectURL(await response.blob()), link=document.createElement('a'); link.href=url; link.download=pdfRecord.file_name||'図面.pdf'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); message('pdfPlanStatus','共有PDF図面をダウンロードしました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF をダウンロードできませんでした：${error.message}`,'warn'); }
   }
+  function subscribePdfChanges() { if(pdfSubscription) db.removeChannel(pdfSubscription); if(!currentFieldId) return; pdfSubscription=db.channel(`survey-pdf-plan-${currentFieldId}`).on('postgres_changes',{event:'*',schema:'public',table:'survey_pdf_plans',filter:`project_id=eq.${currentFieldId}`},()=>loadPdfPlan()).subscribe(); }
   function options(select, includeBlank=true) {
     const current=select.value; select.innerHTML=includeBlank?'<option value="">選択してください</option>':'';
     if (resectionStation && (select.id==='station')) { const o=document.createElement('option'); o.value='__resection__'; o.textContent=`後方交会機械点  (X ${resectionStation.x.toFixed(3)}, Y ${resectionStation.y.toFixed(3)})`; select.append(o); }
@@ -549,8 +547,9 @@
   $('pdfReset').onclick=()=>{resetPdfView();renderPdfPage(false);};
   $('pdfRotateLeft').onclick=()=>{pdfRotation=(pdfRotation-15+360)%360;pdfPanX=0;pdfPanY=0;updatePdfView();renderPdfPage(false);};
   $('pdfRotateRight').onclick=()=>{pdfRotation=(pdfRotation+15)%360;pdfPanX=0;pdfPanY=0;updatePdfView();renderPdfPage(false);};
-  $('clearPdfPlan').onclick=async()=>{ if(!currentFieldId) return; if(!confirm('この現場に保存した PDF 図面をこの端末から削除しますか？')) return; try { await removePdfPlan(currentFieldId); $('pdfPlanFile').value=''; pdfDocument=null; clearPdfCanvas(); message('pdfPlanStatus','この現場の PDF 図面を削除しました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF を削除できませんでした：${error.message}`,'warn'); } };
+  $('clearPdfPlan').onclick=async()=>{ if(!currentFieldId) return; if(!confirm('この現場の共有 PDF 図面を、全員の画面から削除しますか？')) return; try { const record=pdfRecord || (await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle()).data; const removed=await db.from('survey_pdf_plans').delete().eq('project_id',currentFieldId); if(removed.error) throw removed.error; if(record?.storage_path) { const storageRemoved=await db.storage.from(PDF_BUCKET).remove([record.storage_path]); if(storageRemoved.error) throw storageRemoved.error; } $('pdfPlanFile').value=''; pdfDocument=null; pdfRecord=null; clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); message('pdfPlanStatus','この現場の共有 PDF 図面を削除しました。','ok'); } catch(error) { message('pdfPlanStatus',`PDF を削除できませんでした：${error.message}`,'warn'); } };
   $('calcLevel').onclick=calcLevel;
+  document.querySelectorAll('[data-level-preset]').forEach(button=>button.onclick=()=>{ const [id,value]=button.dataset.levelPreset.split(':'); $(id).value=Number(value).toFixed(3); calcLevel(); message('levelStatus',`${button.textContent} を呼び出しました。既知点のスタッフ読みを入れると目標読値を表示します。`,'ok'); });
   ['levelKnownOffset','levelFlOffset','levelRaiseFromGl','levelRaiseFromFl','levelKnownRead','levelTargetRead'].forEach(id=>$(id).addEventListener('input',calcLevel));
   $('calcAsBuilt').onclick=calcAsBuilt;
   $('saveObservation').onclick=saveObservation;
