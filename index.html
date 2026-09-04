@@ -198,7 +198,10 @@
   let pdfPinch = null;
   const PDF_BUCKET='survey-pdf-plans';
   let pdfSubscription=null;
+  let migratingLegacyPdf=false;
   if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const legacyPlanStore=new Promise((resolve,reject)=>{ const request=indexedDB.open('ts-sokuryou-plans',1); request.onupgradeneeded=()=>request.result.createObjectStore('plans'); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); });
+  const getLegacyPdfPlan=async id=>{ try { const database=await legacyPlanStore; return await new Promise((resolve,reject)=>{ const request=database.transaction('plans','readonly').objectStore('plans').get(id); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); }); } catch { return null; } };
 
   let fields = [];
   let currentFieldId = '';
@@ -250,7 +253,7 @@
   async function loadPdfPlan() {
     pdfDocument=null; pdfRecord=null; pdfPage=1; clearPdfCanvas('PDF 図面を読み込み中…');
     if(!currentFieldId) return clearPdfCanvas();
-    try { const result=await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle(); if(result.error) throw result.error; const record=result.data; if(!record) { clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); return message('pdfPlanStatus','PDF 図面を選択して、現場メンバー全員へ共有できます。',''); } if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const download=await db.storage.from(PDF_BUCKET).download(record.storage_path); if(download.error) throw download.error; const bytes=await download.data.arrayBuffer(); const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); pdfDocument=await pdfjsLib.getDocument({data:bytes,disableWorker:mobile}).promise; await renderPdfPage(); }
+    try { const result=await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle(); if(result.error) throw result.error; const record=result.data; if(!record) { const legacy=await getLegacyPdfPlan(currentFieldId); if(legacy?.file&&!migratingLegacyPdf) { migratingLegacyPdf=true; message('pdfPlanStatus','この端末に保存されていた旧PDFをクラウド共有へ移行中…',''); try { await importPdfPlan(legacy.file); } finally { migratingLegacyPdf=false; } return; } clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); return message('pdfPlanStatus','PDF 図面を選択して、現場メンバー全員へ共有できます。',''); } if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const download=await db.storage.from(PDF_BUCKET).download(record.storage_path); if(download.error) throw download.error; const bytes=await download.data.arrayBuffer(); const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); pdfDocument=await pdfjsLib.getDocument({data:bytes,disableWorker:mobile}).promise; await renderPdfPage(); }
     catch(error) { clearPdfCanvas('PDF 図面を表示できませんでした。'); message('pdfPlanStatus',`PDF を読み込めませんでした：${error.message}`,'warn'); }
   }
   async function importPdfPlan(file) {
