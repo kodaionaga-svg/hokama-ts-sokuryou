@@ -198,10 +198,7 @@
   let pdfPinch = null;
   const PDF_BUCKET='survey-pdf-plans';
   let pdfSubscription=null;
-  let migratingLegacyPdf=false;
   if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const legacyPlanStore=new Promise((resolve,reject)=>{ const request=indexedDB.open('ts-sokuryou-plans',1); request.onupgradeneeded=()=>request.result.createObjectStore('plans'); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); });
-  const getLegacyPdfPlan=async id=>{ try { const database=await legacyPlanStore; return await new Promise((resolve,reject)=>{ const request=database.transaction('plans','readonly').objectStore('plans').get(id); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); }); } catch { return null; } };
 
   let fields = [];
   let currentFieldId = '';
@@ -239,21 +236,21 @@
   function message(id, text, kind='') { const el=$(id); el.textContent=text; el.className='status '+kind; }
   function updatePdfView() { const canvas=$('pdfPlan'); canvas.style.transform=`translate(${pdfPanX}px,${pdfPanY}px) scale(${pdfScale}) rotate(${pdfRotation}deg)`; }
   function resetPdfView() { pdfScale=1; pdfPanX=0; pdfPanY=0; updatePdfView(); }
-  function clearPdfCanvas(text='PDF 図面を選択してください。') { const canvas=$('pdfPlan'), ctx=canvas.getContext('2d'), width=Math.max(280,Math.round($('pdfViewport').getBoundingClientRect().width||360)); canvas.width=width; canvas.height=220; canvas.style.height='220px'; pdfRotation=0; resetPdfView(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,220); ctx.fillStyle='#64748b'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText(text,width/2,110); }
+  function clearPdfCanvas(text='PDF 図面を選択してください。') { const canvas=$('pdfPlan'), ctx=canvas.getContext('2d'), width=Math.max(280,Math.round($('pdfViewport').getBoundingClientRect().width||360)); canvas.width=width; canvas.height=220; canvas.style.width=`${width}px`; canvas.style.height='auto'; pdfRotation=0; resetPdfView(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,220); ctx.fillStyle='#64748b'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText(text,width/2,110); }
   async function renderPdfPage(resetView=true) {
     if(!pdfDocument) return clearPdfCanvas();
     pdfPage=Math.max(1,Math.min(pdfDocument.numPages,pdfPage));
     const page=await pdfDocument.getPage(pdfPage), canvas=$('pdfPlan'), available=Math.max(280,$('pdfViewport').getBoundingClientRect().width||360), initial=page.getViewport({scale:1});
     if(resetView) { pdfRotation=initial.height>initial.width?90:0; resetPdfView(); }
-    const rotatedWidth=(pdfRotation%180)?initial.height:initial.width, displayScale=Math.min(2.2,Math.max(.5,(available-4)/rotatedWidth)), displayWidth=initial.width*displayScale, displayHeight=initial.height*displayScale, mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent), maxPixels=mobile?8000000:24000000, maxEdge=mobile?4096:8192, requestedQuality=Math.min(mobile?3:6,Math.max(2,(window.devicePixelRatio||1)*2*pdfScale)), quality=Math.min(requestedQuality,Math.sqrt(maxPixels/Math.max(1,displayWidth*displayHeight)),maxEdge/Math.max(displayWidth,displayHeight)), viewport=page.getViewport({scale:displayScale*quality});
-    canvas.width=Math.round(viewport.width); canvas.height=Math.round(viewport.height); canvas.style.width=`${Math.round(displayWidth)}px`; canvas.style.height=`${Math.round(displayHeight)}px`; const ctx=canvas.getContext('2d'); await page.render({canvasContext:ctx,viewport}).promise; updatePdfView();
+    const rotatedWidth=(pdfRotation%180)?initial.height:initial.width, displayScale=Math.min(2.2,Math.max(.5,(available-4)/rotatedWidth)), displayWidth=initial.width*displayScale, displayHeight=initial.height*displayScale, mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent), maxPixels=mobile?12000000:24000000, maxEdge=mobile?4096:8192, requestedQuality=Math.min(mobile?4:6,Math.max(2,(window.devicePixelRatio||1)*2*pdfScale)), quality=Math.min(requestedQuality,Math.sqrt(maxPixels/Math.max(1,displayWidth*displayHeight)),maxEdge/Math.max(displayWidth,displayHeight)), viewport=page.getViewport({scale:displayScale*quality});
+    canvas.width=Math.round(viewport.width); canvas.height=Math.round(viewport.height); canvas.style.width=`${Math.round(displayWidth)}px`; canvas.style.height='auto'; const ctx=canvas.getContext('2d'); await page.render({canvasContext:ctx,viewport}).promise; updatePdfView();
     document.dispatchEvent(new CustomEvent('survey-pdf-rendered',{detail:{canvas,page:pdfPage,pages:pdfDocument.numPages}}));
     message('pdfPlanStatus',`PDF 図面：${pdfPage} / ${pdfDocument.numPages} ページ｜倍率 ${Math.round(pdfScale*100)}%・回転 ${pdfRotation}°`,'ok'); $('pdfPrev').disabled=pdfPage<=1; $('pdfNext').disabled=pdfPage>=pdfDocument.numPages;
   }
   async function loadPdfPlan() {
     pdfDocument=null; pdfRecord=null; pdfPage=1; clearPdfCanvas('PDF 図面を読み込み中…');
     if(!currentFieldId) return clearPdfCanvas();
-    try { const result=await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle(); if(result.error) throw result.error; const record=result.data; if(!record) { const legacy=await getLegacyPdfPlan(currentFieldId); if(legacy?.file&&!migratingLegacyPdf) { migratingLegacyPdf=true; message('pdfPlanStatus','この端末に保存されていた旧PDFをクラウド共有へ移行中…',''); try { await importPdfPlan(legacy.file); } finally { migratingLegacyPdf=false; } return; } clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); return message('pdfPlanStatus','PDF 図面を選択して、現場メンバー全員へ共有できます。',''); } if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const download=await db.storage.from(PDF_BUCKET).download(record.storage_path); if(download.error) throw download.error; const bytes=await download.data.arrayBuffer(); const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); pdfDocument=await pdfjsLib.getDocument({data:bytes,disableWorker:mobile}).promise; await renderPdfPage(); }
+    try { const result=await db.from('survey_pdf_plans').select('*').eq('project_id',currentFieldId).maybeSingle(); if(result.error) throw result.error; const record=result.data; if(!record) { clearPdfCanvas('この現場の共有 PDF 図面は未登録です。'); return message('pdfPlanStatus','PDF 図面を選択して、現場メンバー全員へ共有できます。',''); } if(!window.pdfjsLib) throw new Error('PDF表示機能を読み込めませんでした。'); pdfRecord=record; const download=await db.storage.from(PDF_BUCKET).download(record.storage_path); if(download.error) throw download.error; const bytes=await download.data.arrayBuffer(); const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); pdfDocument=await pdfjsLib.getDocument({data:bytes,disableWorker:mobile}).promise; await renderPdfPage(); }
     catch(error) { clearPdfCanvas('PDF 図面を表示できませんでした。'); message('pdfPlanStatus',`PDF を読み込めませんでした：${error.message}`,'warn'); }
   }
   async function importPdfPlan(file) {
